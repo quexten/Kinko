@@ -1,9 +1,44 @@
-from gi.repository import Gtk, Adw, Gdk, Graphene, Gsk, Gio, GLib, GObject
+from gi.repository import Gtk, GLib, Adw, GObject
 from datetime import datetime, timezone, timedelta
 import timeago
 
+class MainView(Gtk.Box):
+    def __init__(self, backup_store, navigate_callback):
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.set_margin_start(80)
+        self.set_margin_end(80)
+        self.set_margin_top(20)
+        self.backup_store = backup_store
+        self.navigate_callback = navigate_callback
+        self.number_of_rendered_children = 0
+        GObject.timeout_add(100, lambda: self.tick())
 
-def create_backup_preview_box(backup_config, view_details_callback=None, view_schedule_callback=None, view_backup_history_callback=None, show_edit_backup_dialog_callback=None):
+    def navigate_to(self, param, window):
+        self.header = Gtk.HeaderBar()
+        self.back_button = Gtk.Button(label="Add Backup")
+        self.back_button.get_style_context().add_class("suggested-action")
+        self.back_button.connect("clicked", lambda _: self.navigate_callback("edit", None))
+        self.header.pack_start(self.back_button)
+        window.set_titlebar(self.header)
+        self.render_list()
+
+    def render_list(self):
+        while self.get_first_child() is not None:
+            self.get_first_child().on_destroy()
+            self.remove(self.get_first_child())
+
+        self.number_of_rendered_children = 0
+        for backup_config in self.backup_store.get_backup_configs():
+            self.append(create_backup_preview_box(backup_config, self.navigate_callback))
+            self.number_of_rendered_children += 1
+
+    def tick(self):
+        # check number of children
+        if self.number_of_rendered_children != len(self.backup_store.get_backup_configs()):
+            self.render_list()
+        GObject.timeout_add(100, lambda: self.tick())
+
+def create_backup_preview_box(backup_config, navigate_callback):
     list = Gtk.ListBox()
     list.get_style_context().add_class("boxed-list")
     list.set_selection_mode(Gtk.SelectionMode.NONE)
@@ -92,17 +127,13 @@ def create_backup_preview_box(backup_config, view_details_callback=None, view_sc
 
     def on_row_click(row, button):
         if button == main_row:
-            if show_edit_backup_dialog_callback is not None:
-                show_edit_backup_dialog_callback(backup_config.settings.id)
+            navigate_callback("edit", backup_config.settings.id)
         if button == status_row:
-            if view_details_callback is not None:
-                view_details_callback(list, button, backup_config.settings.id)
+            navigate_callback("status", backup_config.settings.id)
         if button == schedule_row:
-            if view_schedule_callback is not None:
-                view_schedule_callback(list, button, backup_config.settings.id)
+            navigate_callback("schedule", backup_config.settings.id)
         if button == last_backup_row:
-            if view_backup_history_callback is not None:
-                view_backup_history_callback(list, button, backup_config.settings.id)
+            navigate_callback("history", backup_config.settings.id)
 
     list.connect("row-activated", on_row_click)
 

@@ -3,9 +3,9 @@ import threading
 import time
 
 def start_monitor(backup_executor):
+    print("Starting power monitor...")
     def monitor_power():
         last = None
-        print("Starting power monitor...")
         while True:
             with open("/sys/class/power_supply/BAT0/status", "r") as f:
                 status = f.read()
