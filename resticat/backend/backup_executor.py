@@ -107,7 +107,7 @@ class BackupExecutor():
             if backup_config.settings.id == id:
                 backup_config.status.status = "Running-Cleanup"
                 try:
-                    res = restic.forget(backup_config.settings.aws_s3_repository, backup_config.settings.aws_s3_access_key, backup_config.settings.aws_s3_secret_key, backup_config.settings.repository_password, backup_config.schedule.cleanup_keep_hourly, backup_config.schedule.cleanup_keep_daily, backup_config.schedule.cleanup_keep_weekly, backup_config.schedule.cleanup_keep_monthly, backup_config.schedule.cleanup_keep_yearly)
+                    res = restic.forget(backup_config.settings.aws_s3_repository, backup_config.settings.aws_s3_access_key, backup_config.settings.aws_s3_secret_key, backup_config.settings.repository_password, int(backup_config.schedule.cleanup_keep_hourly), int(backup_config.schedule.cleanup_keep_daily), int(backup_config.schedule.cleanup_keep_weekly), int(backup_config.schedule.cleanup_keep_monthly), int(backup_config.schedule.cleanup_keep_yearly))
                     print(res)
                 except Exception as e:
                     print("error cleaning up", e)
@@ -126,13 +126,19 @@ class BackupExecutor():
         backup_config.status.status = "Running"
         backup_config.status.progress = 0
         backup_config.status.message = "Starting backup"
+        backup_config.status.files = 0
+        backup_config.status.max_files = 0
+        backup_config.status.bytes_processed = 0
+        backup_config.status.bytes_total = 0
+        backup_config.status.seconds_elapsed = 0
+        backup_config.status.seconds_remaining = None
         print("Starting backup")
 
         def on_progress(status):
             if status.get("message_type") == "status":
                 backup_config.status.progress = status.get("percent_done")
                 if status.get("current_files") is not None and len(status.get("current_files")) > 0:
-                    backup_config.status.message = "Currently processing " + status.get("current_files")[0]
+                    backup_config.status.message = "" + status.get("current_files")[0]
                 backup_config.status.files = status.get("files_done")
                 backup_config.status.max_files = status.get("total_files")
                 backup_config.status.bytes_processed = status.get("bytes_done")
@@ -153,9 +159,21 @@ class BackupExecutor():
         ignores = []
         if backup_config.settings.ignores_cache:
             ignores.append(".cache/")
+            ignores.append("Code/Cache*")
+            ignores.append("Cache")
+            ignores.append("cache")
             ignores.append(".thumbnails/")
             ignores.append("node_modules/")
             ignores.append("__pycache__/")
+            ignores.append("site-packages/")
+            ignores.append(".npm/")
+            ignores.append(".mozilla/firefox/")
+            ignores.append(".vscode/extensions/")
+            ignores.append(".var/app/")
+            ignores.append(".wine")
+            ignores.append("go/pkg/mod/")
+            ignores.append(".git/objects/pack/")
+            ignores.append(".rustup/")
         if backup_config.settings.ignore_trash:
             ignores.append(".local/share/Trash/")
         if backup_config.settings.ignore_downloads:
@@ -180,6 +198,7 @@ class BackupExecutor():
             ignores.append("*.vmswp")
             ignores.append("*.vmss")
             ignores.append("*.qcow2")
+            ignores.append(".local/share/containers/")
 
         try:
             restic.backup(backup_config.settings.aws_s3_repository, backup_config.settings.aws_s3_access_key, backup_config.settings.aws_s3_secret_key, backup_config.settings.repository_password, backup_config.settings.source_path, ignores, on_progress=on_progress)

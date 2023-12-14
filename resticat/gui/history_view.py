@@ -1,4 +1,4 @@
-from gi.repository import Gtk, Adw
+from gi.repository import Gtk, Adw, GObject, GLib
 
 class HistoryView(Gtk.Box):
     def __init__(self, backup_store, navigate):
@@ -23,27 +23,25 @@ class HistoryView(Gtk.Box):
         self.append(self.history_list)
 
     def navigate_to(self, param, window):
+        self.selected_id = param
         self.header = Gtk.HeaderBar()
         self.back_button = Gtk.Button(label="Back")
-        self.back_button.connect("clicked", lambda _: self.navigate_callback("main", None))
+        def back_button_clicked(button):
+            while self.history_list.get_first_child() is not None:
+                self.history_list.remove(self.history_list.get_first_child())
+            self.navigate_callback("main", None)
+        self.back_button.connect("clicked", lambda _: back_button_clicked(self.back_button))
         self.header.pack_start(self.back_button)
         window.set_titlebar(self.header)
 
-    def switch_to_backup_history(self, window, stack, switch_to_overview):
-        # switch stack
-        stack.set_visible_child(self.backup_history)
+        self.render_list(window)
 
-        # update header
-        self.header = Gtk.HeaderBar()
-        window.set_titlebar(self.header)
-        self.back_button = Gtk.Button(label="Back")
-        self.back_button.connect("clicked", lambda _: switch_to_overview())
-        self.header.pack_start(self.back_button)
-
+    def render_list(self, window):
         # update list
         while self.history_list.get_first_child() is not None:
             self.history_list.remove(self.history_list.get_first_child())
         backups = self.backup_store.get_backup_config(self.selected_id).status.backups
+
         for backup in reversed(backups):
             row = Adw.ActionRow()
             row.set_title(backup.get("time").strftime("%Y-%m-%d %H:%M:%S"))

@@ -160,7 +160,7 @@ def create_backup_preview_box(backup_config, navigate_callback):
                 if backup_config.status.seconds_remaining > 60 * 60:
                     subtitle.set_text("{} hours, {} minutes remainaing".format(int(backup_config.status.seconds_remaining / 60 / 60), int(backup_config.status.seconds_remaining / 60 % 60)))
                 elif backup_config.status.seconds_remaining > 60:
-                    subtitle.set_text("{} minutes, {} seconds remainaing".format(int(backup_config.status.seconds_remaining / 60), int(backup_config.status.seconds_remaining % 60)))
+                    subtitle.set_text("{} minutes remainaing".format(int(backup_config.status.seconds_remaining / 60)))
                 else:
                     subtitle.set_text("{} seconds remainaing".format(int(backup_config.status.seconds_remaining)))
         list.last_status = status
@@ -177,6 +177,6 @@ def create_backup_preview_box(backup_config, navigate_callback):
 
 
         if not list.destroyed:
-            GObject.timeout_add(100, update_gui)
-    GObject.timeout_add(100, lambda: update_gui())
+            GObject.timeout_add(1000, update_gui)
+    GObject.timeout_add(1000, lambda: update_gui())
     return list

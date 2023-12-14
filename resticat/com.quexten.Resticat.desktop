@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Resticat
+Comment=A backup tool
+Keywords=backup;recovery;
+Exec=main.py
+Terminal=false
+Type=Application
+Icon=com.quexten.Resticat.svg
+StartupNotify=true
+Categories=GNOME;GTK;Backup;

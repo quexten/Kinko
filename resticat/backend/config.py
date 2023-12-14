@@ -52,17 +52,20 @@ def save_all_configs(backup_store):
         f.write(encrypted_configs)
 
 def read_all_configs():
-    with open(".config", "r") as f:
-        encrypted_configs = f.read()
-    encrypted_configs = encrypted_configs.split("\n")
-    configs = []
-    for encrypted_config in encrypted_configs:
-        try:
-            config = decrypt_string(encrypted_config, get_application_encryption_key())
-            configs.append(json_to_config(config))
-        except:
-            pass
-    return configs
+    try:
+        with open(".config", "r") as f:
+            encrypted_configs = f.read()
+        encrypted_configs = encrypted_configs.split("\n")
+        configs = []
+        for encrypted_config in encrypted_configs:
+            try:
+                config = decrypt_string(encrypted_config, get_application_encryption_key())
+                configs.append(json_to_config(config))
+            except:
+                pass
+        return configs
+    except Exception as ex:
+        return []
  
 def json_to_config(json_cfg):
     config_dict = json.loads(json_cfg)

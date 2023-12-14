@@ -2,6 +2,13 @@ from gi.repository import Gtk, Adw, GObject
 import backend.config as config
 from datetime import timedelta
 
+def sizeof_fmt(num, suffix="B"):
+    for unit in ("", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"):
+        if abs(num) < 1024.0:
+            return f"{num:3.1f}{unit}{suffix}"
+        num /= 1024.0
+    return f"{num:.1f}Yi{suffix}"
+
 class StatusView(Gtk.Box):
     def __init__(self, b_store, b_executor, navigate_callback):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)
@@ -20,20 +27,10 @@ class StatusView(Gtk.Box):
         self.backup_config_view_title.set_halign(Gtk.Align.START)
         self.backup_config_view.append(self.backup_config_view_title)
 
-        self.backup_config_view_status_box = Gtk.ListBox()
-        self.backup_config_view_status_box.get_style_context().add_class("boxed-list")
-        self.backup_config_view_status_box.set_selection_mode(Gtk.SelectionMode.NONE)
-        self.backup_config_view_status_box.connect("row-activated", lambda listbox, button: self.show_edit_backup_dialog(listbox, self.selected_id))
-        self.backup_config_view.append(self.backup_config_view_status_box)
-        
-        self.status_row = Gtk.ListBoxRow()
-        self.status_row.set_selectable(False)
-        self.backup_config_view_status_box.append(self.status_row)
-
         self.status_box = Gtk.Stack()
         self.status_box.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
         self.status_box.set_transition_duration(200)
-        self.status_row.set_child(self.status_box)
+        self.backup_config_view.append(self.status_box)
 
         self.status_box_idle = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.status_box_idle.set_margin_start(10)
@@ -65,6 +62,21 @@ class StatusView(Gtk.Box):
         self.subtitle.get_style_context().add_class("dim-label")
         self.status_box_running.append(self.subtitle)
 
+        self.files_progress = Gtk.Label(label="0/0 files")
+        self.files_progress.set_halign(Gtk.Align.START)
+        self.files_progress.get_style_context().add_class("dim-label")
+        self.status_box_running.append(self.files_progress)
+
+        self.data_progress = Gtk.Label(label="0/0 bytes")
+        self.data_progress.set_halign(Gtk.Align.START)
+        self.data_progress.get_style_context().add_class("dim-label")
+        self.status_box_running.append(self.data_progress)
+    
+        self.current_file_label = Gtk.Label(label="Current file")
+        self.current_file_label.set_halign(Gtk.Align.START)
+        self.current_file_label.get_style_context().add_class("dim-label")
+        self.status_box_running.append(self.current_file_label)
+
         self.progress_bar = Gtk.ProgressBar()
         self.progress_bar.set_show_text(False)
         self.progress_bar.set_fraction(0)
@@ -72,6 +84,7 @@ class StatusView(Gtk.Box):
         self.progress_bar.set_margin_end(10)
         self.status_box_running.append(self.progress_bar)
         self.status_box.add_named(self.status_box_running, "running")
+
 
         self.error_box = Adw.ActionRow()
         self.error_box.set_title("Error")
@@ -111,10 +124,13 @@ class StatusView(Gtk.Box):
         self.action_box.append(self.backup_config_view_delete_button)
         self.backup_config_view.append(self.action_box)
 
-        self.backup_config_view_status_box.destroyed = False
+        self.destroyed = False
         self.last_status = None
 
         def update_timer():
+            if not self.destroyed:
+                GObject.timeout_add(100, update_timer)
+            
             if not "selected_id" in self.__dict__:
                 return
 
@@ -139,11 +155,23 @@ class StatusView(Gtk.Box):
             #     self.progress_box_description_label.set_text("{}/{} files".format(int(round(backup_config.status.files, 1)), backup_config.status.max_files))
             self.progress_bar.set_fraction(backup_config.status.progress)
             self.progress_bar.set_text(str(round(backup_config.status.progress * 100, 2))+ "%")
+            self.files_progress.set_text("{}/{} files".format(int(round(backup_config.status.files, 1)), backup_config.status.max_files))
+            self.data_progress.set_text("{}/{}".format(sizeof_fmt(backup_config.status.bytes_processed), sizeof_fmt(backup_config.status.bytes_total)))
             current_file = backup_config.status.message
             if len(current_file) > 70:
                 current_file = current_file[:70] + "..."
+            self.current_file_label.set_text(current_file)
             # self.current_file_label.set_text(current_file)
-            # self.eta_label.set_text("Elapsed: {}s, Remaining: {}s".format(backup_config.status.seconds_elapsed, backup_config.status.seconds_remaining))
+            if "seconds_remaining" in backup_config.status.__dict__:
+                if backup_config.status.seconds_remaining is not None:
+                    if backup_config.status.seconds_remaining > 60 * 60:
+                        self.subtitle.set_text("{} hours, {} minutes remainaing".format(int(backup_config.status.seconds_remaining / 60 / 60), int(backup_config.status.seconds_remaining / 60 % 60)))
+                    elif backup_config.status.seconds_remaining > 60:
+                        self.subtitle.set_text("{} minutes remaining".format(int(backup_config.status.seconds_remaining / 60)))
+                    else:
+                        self.subtitle.set_text("{} seconds remaining".format(int(backup_config.status.seconds_remaining)))
+                else:
+                    self.subtitle.set_text("Calculating time remaining")
             self.backup_config_view_back_button.set_sensitive(backup_config.status.status == "Idle")
             if backup_config.status.status == "Running" or backup_config.status.status == "Running-Cleanup":
                 # set enabled
@@ -161,12 +189,10 @@ class StatusView(Gtk.Box):
                 else:
                     next_backup_time = backup_config.status.last_backup + timedelta(hours=(1 if backup_config.schedule.backup_frequency == "hourly" else (24 if backup_config.schedule.backup_frequency == "daily" else 7 * 24)))
                     self.status_box_idle_description_label.set_text("Upcoming Backup - {}".format(next_backup_time.strftime("%H:%M")))
-
-            if not self.backup_config_view_status_box.destroyed:
-                GObject.timeout_add(100, update_timer)
         GObject.timeout_add(100, lambda: update_timer())
 
     def navigate_to(self, param, window):
+        self.selected_id = param
         self.header = Gtk.HeaderBar()
         self.back_button = Gtk.Button(label="Back")
         self.back_button.connect("clicked", lambda _: self.navigate_callback("main", None))

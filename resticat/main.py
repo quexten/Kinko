@@ -1,13 +1,14 @@
+#!/usr/bin/python
 import sys
 import gi
-import uuid
+gi.require_version('Gtk', '4.0')
+gi.require_version('Adw', '1')
 
 from gui.edit_dialog import show_edit_backup_dialog
 from gui.history_view import HistoryView
 from gui.schedule_view import ScheduleView
 from gui.status_view import StatusView
-gi.require_version('Gtk', '4.0')
-gi.require_version('Adw', '1')
+
 from gi.repository import Gtk, Adw, Gdk, Graphene, Gsk, Gio, GLib, GObject
 import backend.backup_store as backup_store
 import backend.backup_executor as backup_executor
@@ -34,42 +35,55 @@ class MainWindow(Gtk.ApplicationWindow):
 
         self.stack = Gtk.Stack()
         self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
-        self.scrolled_view = Gtk.ScrolledWindow()
-        self.scrolled_view.set_vexpand(True)
-        
+        self.set_child(self.stack)
+    
         self.main_view = MainView(b, self.navigate)
-        self.stack.add_named(self.main_view, "main")
+        self.main_view_scrolled = Gtk.ScrolledWindow()
+        self.main_view_scrolled.set_vexpand(True)
+        self.main_view_scrolled.set_hexpand(False)
+        self.main_view_scrolled.set_child(self.main_view)
+        self.stack.add_named(self.main_view_scrolled, "main")
         self.stack.set_visible_child(self.main_view)
-        self.scrolled_view.set_child(self.stack)
-        self.set_child(self.scrolled_view)
 
         self.history_view = HistoryView(b, self.navigate)
-        self.stack.add_named(self.history_view, "history")
+        self.history_view_scrolled = Gtk.ScrolledWindow()
+        self.history_view_scrolled.set_vexpand(True)
+        self.history_view_scrolled.set_hexpand(False)
+        self.history_view_scrolled.set_child(self.history_view)
+        self.stack.add_named(self.history_view_scrolled, "history")
 
         self.schedule_view = ScheduleView(b, self.navigate)
-        self.stack.add_named(self.schedule_view, "schedule")
-        
+        self.schedule_view_scrolled = Gtk.ScrolledWindow()
+        self.schedule_view_scrolled.set_vexpand(True)
+        self.schedule_view_scrolled.set_hexpand(False)
+        self.schedule_view_scrolled.set_child(self.schedule_view)
+        self.stack.add_named(self.schedule_view_scrolled, "schedule")
+
         self.status_view = StatusView(b, be, self.navigate)
-        self.stack.add_named(self.status_view, "status")
+        self.status_view_scrolled = Gtk.ScrolledWindow()
+        self.status_view_scrolled.set_vexpand(True)
+        self.status_view_scrolled.set_hexpand(False)
+        self.status_view_scrolled.set_child(self.status_view)
+        self.stack.add_named(self.status_view_scrolled, "status")
     
-        self.set_default_size(800, 500)
+        self.set_default_size(700, 700)
         self.set_title("Resticat")
         self.navigate("main", None)
 
     def navigate(self, view, param):
         if view == "main":
-            self.stack.set_visible_child(self.main_view)
+            self.stack.set_visible_child(self.main_view_scrolled)
             self.main_view.navigate_to(param, self)
         elif view == "schedule":
-            self.stack.set_visible_child(self.schedule_view)
+            self.stack.set_visible_child(self.schedule_view_scrolled)
             self.schedule_view.navigate_to(param, self)
         elif view == "edit":
             show_edit_backup_dialog(self, b, param)
         elif view == "status":
-            self.stack.set_visible_child(self.status_view)
+            self.stack.set_visible_child(self.status_view_scrolled)
             self.status_view.navigate_to(param, self)
         elif view == "history":
-            self.stack.set_visible_child(self.history_view)
+            self.stack.set_visible_child(self.history_view_scrolled)
             self.history_view.navigate_to(param, self)
         elif view == "status":
             print("status")

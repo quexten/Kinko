@@ -3,7 +3,7 @@ import json
 import os
 
 launch_command = "ionice -c2 nice -n19"
-restic_path = "/usr/bin/restic"
+restic_path = "/app/bin/restic"
 
 def init(repository, access_key_id, secret_access_key, password):
     restic_cmd = f"{launch_command} {restic_path} init --json -r {repository}"
@@ -17,7 +17,7 @@ def init(repository, access_key_id, secret_access_key, password):
 
 def backup(repository, access_key_id, secret_access_key, password, source, ignores, on_progress=None):
     ignores_string = " --exclude " + " --exclude ".join(ignores)
-    restic_cmd = f'{launch_command} {restic_path}  -r {repository} backup --compression auto --exclude-caches --one-file-system --exclude-larger-than 128M ' + ignores_string + f' --json {source}'
+    restic_cmd = f'{launch_command} {restic_path}  -r {repository} backup --compression auto --exclude-caches --tag com.quexten.resticat --one-file-system --exclude-larger-than 128M ' + ignores_string + f' --json {source}'
     env = os.environ.copy()
     env["RESTIC_PASSWORD"] = password
     env["AWS_ACCESS_KEY_ID"] = access_key_id
@@ -71,15 +71,19 @@ def stats(repository, access_key_id, secret_access_key, password):
     return json.loads(result.stdout)
 
 def forget(repository, access_key_id, secret_access_key, password, keep_hourly, keep_daily, keep_weekly, keep_monthly, keep_yearly):
-    restic_cmd = f"{launch_command} {restic_path} forget -r {repository} --prune --keep-hourly {keep_hourly} --keep-daily {keep_daily} --keep-weekly {keep_weekly} --keep-monthly {keep_monthly} --keep-yearly {keep_yearly}"
+    restic_cmd = f"{launch_command} {restic_path} forget -r {repository} --prune --tag com.quexten.resticat --keep-hourly {keep_hourly} --keep-daily {keep_daily} --keep-weekly {keep_weekly} --keep-monthly {keep_monthly} --keep-yearly {keep_yearly}"
     env = os.environ.copy()
     env["RESTIC_PASSWORD"] = password 
-    env["AWS_ACCESS_KEY_ID"] = access_key_id
+    # env["AWS_ACCESS_KEY_ID"] = d
     env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
-    result = subprocess.run(restic_cmd.split(), env=env, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise Exception("Failed to prune repository, err", result.stderr)
-    return result.stdout
+    result = subprocess.Popen(restic_cmd.split(), stdout=subprocess.PIPE, env=env)
+
+    for line in iter(result.stdout.readline, b""):
+        output = line.decode("utf-8")
+        print(output.strip())
+    
+    result.wait()
+    return result
 
 def prune(repository, access_key_id, secret_access_key, password):
     restic_cmd = launch_command + f"restic prune -r {repository}"

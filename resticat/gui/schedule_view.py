@@ -1,4 +1,5 @@
 from gi.repository import Gtk, Adw, Gdk, Graphene, Gsk, Gio, GLib, GObject
+import backend.config as config
 
 class ScheduleView(Gtk.Box):
 
@@ -68,6 +69,15 @@ class ScheduleView(Gtk.Box):
             backup_store.get_backup_config(self.selected_id).schedule.backup_schedule_enabled = switch.get_active()
             self.backup_schedule_view_preferences_backup_frequency_row.set_sensitive(switch.get_active())
         self.backup_schedule_view_preferences_backup_enaled_row.connect("notify::active", on_backup_enabled_changed)
+        def on_backup_frequency_changed(selection, gparam):
+            selected = selection.get_selected()
+            if selected == 0:
+                backup_store.get_backup_config(self.selected_id).schedule.backup_frequency = "hourly"
+            elif selected == 1:
+                backup_store.get_backup_config(self.selected_id).schedule.backup_frequency = "daily"
+            elif selected == 2:
+                backup_store.get_backup_config(self.selected_id).schedule.backup_frequency = "weekly"
+        self.backup_schedule_view_preferences_backup_frequency_row.connect("notify::selected", on_backup_frequency_changed)
 
 
         # clean up
@@ -89,6 +99,9 @@ class ScheduleView(Gtk.Box):
         self.backup_schedule_view_cleanup_keep_hourly_row.set_range(0, 1000)
         self.backup_schedule_view_cleanup_keep_hourly_row.get_adjustment().set_step_increment(1)
         self.backup_schedule_view_cleanup.add(self.backup_schedule_view_cleanup_keep_hourly_row)
+        def on_cleanup_keep_hourly_changed(switch, gparam):
+            backup_store.get_backup_config(self.selected_id).schedule.cleanup_keep_hourly = switch.get_value()
+        self.backup_schedule_view_cleanup_keep_hourly_row.connect("notify::value", on_cleanup_keep_hourly_changed)
 
         self.backup_schedule_view_cleanup_keep_daily_row = Adw.SpinRow()
         self.backup_schedule_view_cleanup_keep_daily_row.set_title("Keep Daily")
@@ -96,6 +109,9 @@ class ScheduleView(Gtk.Box):
         self.backup_schedule_view_cleanup_keep_daily_row.set_range(0, 1000)
         self.backup_schedule_view_cleanup_keep_daily_row.get_adjustment().set_step_increment(1)
         self.backup_schedule_view_cleanup.add(self.backup_schedule_view_cleanup_keep_daily_row)
+        def on_cleanup_keep_daily_changed(switch, gparam):
+            backup_store.get_backup_config(self.selected_id).schedule.cleanup_keep_daily = switch.get_value()
+        self.backup_schedule_view_cleanup_keep_daily_row.connect("notify::value", on_cleanup_keep_daily_changed)
 
         self.backup_schedule_view_cleanup_keep_weekly_row = Adw.SpinRow()
         self.backup_schedule_view_cleanup_keep_weekly_row.set_title("Keep Weekly")
@@ -103,6 +119,9 @@ class ScheduleView(Gtk.Box):
         self.backup_schedule_view_cleanup_keep_weekly_row.set_range(0, 1000)
         self.backup_schedule_view_cleanup_keep_weekly_row.get_adjustment().set_step_increment(1)
         self.backup_schedule_view_cleanup.add(self.backup_schedule_view_cleanup_keep_weekly_row)
+        def on_cleanup_keep_weekly_changed(switch, gparam):
+            backup_store.get_backup_config(self.selected_id).schedule.cleanup_keep_weekly = switch.get_value()
+        self.backup_schedule_view_cleanup_keep_weekly_row.connect("notify::value", on_cleanup_keep_weekly_changed)
 
         self.backup_schedule_view_cleanup_keep_monthly_row = Adw.SpinRow()
         self.backup_schedule_view_cleanup_keep_monthly_row.set_title("Keep Monthly")
@@ -110,43 +129,57 @@ class ScheduleView(Gtk.Box):
         self.backup_schedule_view_cleanup_keep_monthly_row.set_range(0, 1000)
         self.backup_schedule_view_cleanup_keep_monthly_row.get_adjustment().set_step_increment(1)
         self.backup_schedule_view_cleanup.add(self.backup_schedule_view_cleanup_keep_monthly_row)
-        
+        def on_cleanup_keep_monthly_changed(switch, gparam):
+            backup_store.get_backup_config(self.selected_id).schedule.cleanup_keep_monthly = switch.get_value()
+        self.backup_schedule_view_cleanup_keep_monthly_row.connect("notify::value", on_cleanup_keep_monthly_changed)
+
         self.backup_schedule_view_cleanup_keep_yearly_row = Adw.SpinRow()
         self.backup_schedule_view_cleanup_keep_yearly_row.set_title("Keep Yearly")
         self.backup_schedule_view_cleanup_keep_yearly_row.set_value(1)
         self.backup_schedule_view_cleanup_keep_yearly_row.set_range(0, 1000)
         self.backup_schedule_view_cleanup_keep_yearly_row.get_adjustment().set_step_increment(1)
         self.backup_schedule_view_cleanup.add(self.backup_schedule_view_cleanup_keep_yearly_row)
+        def on_cleanup_keep_yearly_changed(switch, gparam):
+            backup_store.get_backup_config(self.selected_id).schedule.cleanup_keep_yearly = switch.get_value()
+        self.backup_schedule_view_cleanup_keep_yearly_row.connect("notify::value", on_cleanup_keep_yearly_changed)
 
         def on_cleanup_enabled_changed(switch, gparam):
             if "selcted_id" in self.__dict__:
                 backup_store.get_backup_config(self.selected_id).schedule.cleanup_schedule_enabled = switch.get_active()
             self.backup_schedule_view_cleanup_keep_hourly_row.set_sensitive(switch.get_active())
+            self.backup_schedule_view_cleanup_keep_daily_row.set_sensitive(switch.get_active())
+            self.backup_schedule_view_cleanup_keep_weekly_row.set_sensitive(switch.get_active())
             self.backup_schedule_view_cleanup_keep_monthly_row.set_sensitive(switch.get_active())
+            self.backup_schedule_view_cleanup_keep_yearly_row.set_sensitive(switch.get_active())
+
         on_cleanup_enabled_changed(self.backup_schedule_view_cleanup_enabled_row, None)
         self.backup_schedule_view_cleanup_enabled_row.connect("notify::active", on_cleanup_enabled_changed)
 
     def navigate_to(self, param, window):
-        self.selected_id = id
+        self.selected_id = param
         
         self.header = Gtk.HeaderBar()
         self.back_button = Gtk.Button(label="Back")
-        self.back_button.connect("clicked", lambda _: self.navigate_callback("main", None))
+        def on_back_button_clicked(button):
+            # save
+            config.save_all_configs(self.backup_store)
+            self.navigate_callback("main", None)
+        self.back_button.connect("clicked", on_back_button_clicked)
         self.header.pack_start(self.back_button)
         window.set_titlebar(self.header)
 
-        # self.history_list = Gtk.ListBox()
-        # self.history_list.get_style_context().add_class("boxed-list")
-        # self.history_list.set_selection_mode(Gtk.SelectionMode.NONE)
-        # self.history_list.connect("row-activated", lambda listbox, button: self.show_edit_backup_dialog(listbox, self.selected_id))
-        # self.append(self.history_list)
-        
-  
-        # set values
-        # backup_schedule = self.backup_store.get_backup_config(id).schedule
-        # if backup_schedule is None:
-        #     return
-        # self.backup_schedule_view_backup_settings_allow_on_metered_row.set_active(backup_schedule.allow_on_metered)
-        # self.backup_schedule_view_preferences_on_connect_to_wifi_row.set_active(backup_schedule.on_network)
-        # self.backup_schedule_view_preferences_on_connect_to_power_row.set_active(backup_schedule.on_ac)
+        backup_schedule = self.backup_store.get_backup_config(self.selected_id).schedule
+        if backup_schedule is None:
+            return
+        self.backup_schedule_view_backup_settings_allow_on_metered_row.set_active(backup_schedule.allow_on_metered)
+        self.backup_schedule_view_preferences_on_connect_to_wifi_row.set_active(backup_schedule.on_network)
+        self.backup_schedule_view_preferences_on_connect_to_power_row.set_active(backup_schedule.on_ac)
+        self.backup_schedule_view_preferences_backup_enaled_row.set_active(backup_schedule.backup_schedule_enabled)
+        self.backup_schedule_view_preferences_backup_frequency_row.set_selected(0 if backup_schedule.backup_frequency == "hourly" else (1 if backup_schedule.backup_frequency == "daily" else 2))
+        self.backup_schedule_view_cleanup_enabled_row.set_active(backup_schedule.cleanup_schedule_enabled)
+        self.backup_schedule_view_cleanup_keep_hourly_row.set_value(backup_schedule.cleanup_keep_hourly)
+        self.backup_schedule_view_cleanup_keep_daily_row.set_value(backup_schedule.cleanup_keep_daily)
+        self.backup_schedule_view_cleanup_keep_weekly_row.set_value(backup_schedule.cleanup_keep_weekly)
+        self.backup_schedule_view_cleanup_keep_monthly_row.set_value(backup_schedule.cleanup_keep_monthly)
+        self.backup_schedule_view_cleanup_keep_yearly_row.set_value(backup_schedule.cleanup_keep_yearly)
     

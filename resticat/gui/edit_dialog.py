@@ -153,7 +153,3 @@ def on_add_backup_win_add_button_clicked(self, b_store):
     cfg = backup_store.BackupConfig(backup_store.BackupSettings(self.add_backup_win_id_row.get_subtitle(), self.add_backup_win_name_row.get_text(), self.add_backup_win_aws_secret_key_row.get_text(), self.add_backup_win_aws_access_key_row.get_text(), self.add_backup_win_aws_repository_row.get_text(), self.add_backup_win_repository_password.get_text(), self.add_backup_win_source_path_row.get_text()), backup_store.BackupStatus(), backup_store.BackupSchedule())
     b_store.add_backup_config(cfg)
     config.save_all_configs(b_store)
-
-    self.box.set_margin_start(80)  
-    self.box.set_margin_end(80)
-    self.box.set_margin_top(10)
