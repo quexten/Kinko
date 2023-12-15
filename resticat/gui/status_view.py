@@ -150,7 +150,11 @@ class StatusView(Gtk.Box):
 
             self.progress_bar.set_fraction(backup_config.status.progress)
             self.progress_bar.set_text(str(round(backup_config.status.progress * 100, 2))+ "%")
-            self.files_progress.set_text("{}/{} files".format(int(round(backup_config.status.files, 1)), backup_config.status.max_files))
+            if "files" in backup_config.status.__dict__:
+                self.files_progress.set_text("{}/{} files".format(int(round(backup_config.status.files, 1)), backup_config.status.max_files))
+            else:
+                print("no files in status")
+                self.files_progress.set_text("0/0 files")
             self.data_progress.set_text("{}/{}".format(sizeof_fmt(backup_config.status.bytes_processed), sizeof_fmt(backup_config.status.bytes_total)))
             current_file = backup_config.status.message
             if len(current_file) > 70:

@@ -2,6 +2,7 @@ class BackupStatus():
     def __init__(self):
         self.last_backup = None
         self.status = "Idle"
+        self.status_message = "Idle"
         self.progress = 0
         self.files = 0
         self.max_files = 0

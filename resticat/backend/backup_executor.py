@@ -102,6 +102,7 @@ class BackupExecutor():
         backup_config.status.status = "Running"
         backup_config.status.progress = 0
         backup_config.status.message = "Starting restore"
+        backup_config.status.status_message = "Starting restore"
         backup_config.status.files = 0
         backup_config.status.max_files = 0
         backup_config.status.bytes_processed = 0
@@ -114,6 +115,7 @@ class BackupExecutor():
             if status.get("message_type") == "status":
                 backup_config.status.progress = status.get("percent_done")
                 backup_config.status.message = "Restoring..."
+                backup_config.status.status_message = "Restoring..."
                 backup_config.status.files = status.get("files_done")
                 if "files_restored" in status:
                     backup_config.status.files = status.get("files_restored")
@@ -131,6 +133,7 @@ class BackupExecutor():
             if status.get("message_type") == "summary":
                 backup_config.status.status = "Idle"
                 backup_config.status.message = "Restore complete"
+                backup_config.status.status_message = "Idle"
                 self.backup_store.notify_update()
 
         try:
@@ -138,6 +141,7 @@ class BackupExecutor():
         except Exception as e:
             backup_config.status.status = "Error"
             backup_config.status.message = "Restore failed"
+            backup_config.status.status_message = e
             print("error running restore", e)
             return False
 
@@ -145,7 +149,6 @@ class BackupExecutor():
         return True
 
     def backup_now(self, id):
-        # return
         thread = threading.Thread(target=self.run_backup, args=(id,))
         thread.start()
 
@@ -170,7 +173,6 @@ class BackupExecutor():
                 return True
 
     def clean_now(self, id):
-        # return
         thread = threading.Thread(target=self.run_clean, args=(id,))
         thread.start()
 
@@ -181,6 +183,7 @@ class BackupExecutor():
         backup_config.status.status = "Running"
         backup_config.status.progress = 0
         backup_config.status.message = "Starting backup"
+        backup_config.status.status_message = "Starting Backup..."
         backup_config.status.files = 0
         backup_config.status.max_files = 0
         backup_config.status.bytes_processed = 0
@@ -191,6 +194,7 @@ class BackupExecutor():
 
         def on_progress(status):
             if status.get("message_type") == "status":
+                backup_config.status.status_message = "Backing up..."
                 backup_config.status.progress = status.get("percent_done")
                 if status.get("current_files") is not None and len(status.get("current_files")) > 0:
                     backup_config.status.message = "" + status.get("current_files")[0]
@@ -202,12 +206,14 @@ class BackupExecutor():
                 if status.get("percent_done") == 1:
                     backup_config.status.last_backup = datetime.now(timezone.utc)
                     backup_config.status.message = "Backup complete"
+                    backup_config.status.status_message = "Idle"
                     backup_config.status.status = "Idle"
                    
             if status.get("message_type") == "summary":
                 backup_config.status.last_backup = datetime.now(timezone.utc)
                 backup_config.status.status = "Idle"
                 backup_config.status.message = "Backup complete"
+                backup_config.status.status_message = "Idle"
                 self.backup_store.notify_update()
 
         ignores = []
@@ -255,6 +261,9 @@ class BackupExecutor():
 
         try:
             restic.backup(backup_config.settings.aws_s3_repository, backup_config.settings.aws_s3_access_key, backup_config.settings.aws_s3_secret_key, backup_config.settings.repository_password, backup_config.settings.source_path, ignores, on_progress=on_progress)
+            backup_config.status.status = "Idle"
+            backup_config.status.message = "Backup complete"
+            backup_config.status.status_message = "Idle"
         except Exception as e:
             backup_config.status.status = "Error"
             backup_config.status.message = "Backup failed"

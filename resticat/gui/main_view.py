@@ -82,10 +82,10 @@ def create_backup_preview_box(backup_config, navigate_callback):
     status_box_running.set_margin_end(10)
     status_box_running.set_margin_top(10)
     status_box_running.set_margin_bottom(10)
-    title = Gtk.Label(label="Backing up...")
-    title.set_markup("<b>Backing up...</b>")
-    title.set_halign(Gtk.Align.START)
-    status_box_running.append(title)
+    running_title = Gtk.Label(label="Backing up...")
+    running_title.set_markup("<b>Backing up...</b>")
+    running_title.set_halign(Gtk.Align.START)
+    status_box_running.append(running_title)
 
     subtitle = Gtk.Label(label="Calculating time remaining")
     subtitle.set_halign(Gtk.Align.START)
@@ -141,11 +141,16 @@ def create_backup_preview_box(backup_config, navigate_callback):
     def on_destroy():
         list.destroyed = True
     list.on_destroy = on_destroy
-    list.last_status = "Idle"
-    
+
+    list.last_status = backup_config.status.status
+    status_box.set_transition_duration(0)
+    status_box.set_visible_child_name(backup_config.status.status.lower())
+    status_box.set_transition_duration(200)
+
     def update_gui():
         status = backup_config.status.status
         progress = backup_config.status.progress
+        running_title.set_text(backup_config.status.status_message)
         if status == "Idle" and list.last_status != "Idle":
             status_box.set_visible_child_name("idle")
         if status == "Running" and list.last_status != "Running":
@@ -177,6 +182,6 @@ def create_backup_preview_box(backup_config, navigate_callback):
 
 
         if not list.destroyed:
-            GObject.timeout_add(1000, update_gui)
-    GObject.timeout_add(1000, lambda: update_gui())
+            GObject.timeout_add(100, update_gui)
+    GObject.timeout_add(100, lambda: update_gui())
     return list
