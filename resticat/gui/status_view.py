@@ -21,32 +21,26 @@ class StatusView(Gtk.Box):
         self.set_margin_end(80)
         self.set_margin_top(10)
 
-        # title
-        self.backup_config_view_title = Gtk.Label(label="")
-        self.backup_config_view_title.set_markup("<b>Backup</b>")
-        self.backup_config_view_title.set_halign(Gtk.Align.START)
-        self.backup_config_view.append(self.backup_config_view_title)
-
         self.status_box = Gtk.Stack()
         self.status_box.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
         self.status_box.set_transition_duration(200)
         self.backup_config_view.append(self.status_box)
 
-        self.status_box_idle = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        self.status_box_idle.set_margin_start(10)
-        self.status_box_idle.set_margin_end(10)
-        self.status_box_idle.set_margin_top(10)
-        self.status_box_idle.set_margin_bottom(10)
-        self.title = Gtk.Label(label="Idle")
-        self.title.set_markup("<b>Idle</b>")
-        self.title.set_halign(Gtk.Align.START)
-        self.status_box_idle.append(self.title)
-        self.status_box_idle_description_label = Gtk.Label(label="Upcoming Backup - 12:00")
-        self.status_box_idle_description_label.set_halign(Gtk.Align.START)
-        self.status_box_idle_description_label.get_style_context().add_class("dim-label")
-        self.status_box_idle.append(self.status_box_idle_description_label)
-        self.status_box.add_named(self.status_box_idle, "idle ")
-
+        self.status_idle_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.status_idle_list = Gtk.ListBox()
+        self.status_idle_list.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.status_idle_list.get_style_context().add_class("boxed-list")
+        self.status_box_idle = Adw.ActionRow()
+        self.status_box_idle.set_title("Idle")
+        self.status_box_idle.set_subtitle("Upcoming Backup - Never")
+        self.status_idle_list.append(self.status_box_idle)
+        self.status_idle_box.append(self.status_idle_list)
+        self.status_box.add_named(self.status_idle_box, "idle")
+        
+        self.status_running_list = Gtk.ListBox()
+        self.status_running_list.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.status_running_list.get_style_context().add_class("boxed-list")
+        
         self.status_box_running = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.status_box_running.set_margin_start(10)
         self.status_box_running.set_margin_end(10)
@@ -83,7 +77,8 @@ class StatusView(Gtk.Box):
         self.progress_bar.set_hexpand(True)
         self.progress_bar.set_margin_end(10)
         self.status_box_running.append(self.progress_bar)
-        self.status_box.add_named(self.status_box_running, "running")
+        self.status_running_list.append(self.status_box_running)
+        self.status_box.add_named(self.status_running_list, "running")
 
 
         self.error_box = Adw.ActionRow()
@@ -99,13 +94,12 @@ class StatusView(Gtk.Box):
         self.backup_config_view.append(self.empty_space_row)
 
         self.action_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        # set align to middle
         self.action_box.set_halign(Gtk.Align.CENTER)
+        self.action_box.set_margin_bottom(10)
 
         self.backup_config_view_back_button = Gtk.Button(label="Backup Now")
         self.backup_config_view_back_button.get_style_context().add_class("suggested-action")
         self.backup_config_view_back_button.connect("clicked", lambda _: b_executor.backup_now(self.selected_id))
-        # do not stretch
         self.backup_config_view_back_button.get_style_context().add_class("pill")
         self.action_box.append(self.backup_config_view_back_button)
 
@@ -113,14 +107,12 @@ class StatusView(Gtk.Box):
         self.backup_config_view_clean_button.get_style_context().add_class("suggested-action")
         self.backup_config_view_clean_button.get_style_context().add_class("pill")
         self.backup_config_view_clean_button.connect("clicked", lambda _: b_executor.clean_now(self.selected_id))
-        # do not stretch
         self.action_box.append(self.backup_config_view_clean_button)
         
         self.backup_config_view_delete_button = Gtk.Button(label="Delete Backup")
         self.backup_config_view_delete_button.get_style_context().add_class("destructive-action")
         self.backup_config_view_delete_button.get_style_context().add_class("pill")
         self.backup_config_view_delete_button.connect("clicked", lambda _: b_store.remove_backup_config(self.selected_id) and config.save_all_configs() and self.switch_to_overview())
-        # do not stretch
         self.action_box.append(self.backup_config_view_delete_button)
         self.backup_config_view.append(self.action_box)
 
@@ -181,13 +173,13 @@ class StatusView(Gtk.Box):
                 self.backup_config_view_clean_button.set_sensitive(True)
             
             if not backup_config.schedule.backup_schedule_enabled:
-                self.status_box_idle_description_label.set_text("Scheduled Backup disabled")
+                self.status_box_idle.set_subtitle("Scheduled Backup disabled")
             else:
                 if backup_config.status.last_backup is None:
-                    self.status_box_idle_description_label.set_text("Upcoming Backup - Never")
+                    self.status_box_idle.set_subtitle("No Upcoming Backup")    
                 else:
                     next_backup_time = backup_config.status.last_backup + timedelta(hours=(1 if backup_config.schedule.backup_frequency == "hourly" else (24 if backup_config.schedule.backup_frequency == "daily" else 7 * 24)))
-                    self.status_box_idle_description_label.set_text("Upcoming Backup - {}".format(next_backup_time.strftime("%H:%M")))
+                    self.status_box_idle.set_subtitle("Upcoming Backup - {}".format(next_backup_time.strftime("%H:%M")))
         GObject.timeout_add(100, lambda: update_timer())
 
     def navigate_to(self, param, window):

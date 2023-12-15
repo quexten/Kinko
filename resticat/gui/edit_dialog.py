@@ -77,9 +77,13 @@ def show_edit_backup_dialog(self, b_store, backup_id):
     self.add_backup_win_source_box.set_description("The source to backup")
     self.add_backup_win_content.append(self.add_backup_win_source_box)
 
-    self.add_backup_win_source_path_row = Adw.EntryRow()
-    self.add_backup_win_source_path_row.set_title("Source Path")
-    self.add_backup_win_source_box.add(self.add_backup_win_source_path_row)
+    self.add_backup_win_home_row = Adw.SwitchRow()
+    self.add_backup_win_home_row.set_title("Home")
+    self.add_backup_win_home_row.set_subtitle("Backup the home directory")
+    self.add_backup_win_home_row.set_active(True)
+    self.add_backup_win_home_row.set_sensitive(False)
+    self.add_backup_win_home_row.set_icon_name("user-home-symbolic")
+    self.add_backup_win_source_box.add(self.add_backup_win_home_row)
     
     data = b_store.get_backup_config(backup_id)
     if data is not None:
@@ -88,7 +92,8 @@ def show_edit_backup_dialog(self, b_store, backup_id):
         self.add_backup_win_aws_access_key_row.set_text(data.settings.aws_s3_access_key)
         self.add_backup_win_aws_repository_row.set_text(data.settings.aws_s3_repository)
         self.add_backup_win_repository_password.set_text(data.settings.repository_password)
-        self.add_backup_win_source_path_row.set_text(data.settings.source_path)
+        if "sources" in data.settings.__dict__:
+            self.add_backup_win_home_row.set_active("~/" in data.settings.sources)
 
     self.add_backup_win_exclude_box = Adw.PreferencesGroup()
     self.add_backup_win_exclude_box.set_margin_top(10)
@@ -143,6 +148,7 @@ def show_edit_backup_dialog(self, b_store, backup_id):
     # add button
     self.add_backup_win_add_button = Gtk.Button(label="Save")
     self.add_backup_win_add_button.set_margin_top(20)
+    self.add_backup_win_add_button.set_margin_bottom(20)
     self.add_backup_win_add_button.get_style_context().add_class("suggested-action")
     self.add_backup_win_add_button.connect("clicked", lambda _: on_add_backup_win_add_button_clicked(self, b_store))
     self.add_backup_win_content.append(self.add_backup_win_add_button)
@@ -156,7 +162,9 @@ def on_add_backup_win_add_button_clicked(self, b_store):
     aws_access_key = self.add_backup_win_aws_access_key_row.get_text()
     aws_repo = self.add_backup_win_aws_repository_row.get_text()
     repo_password = self.add_backup_win_repository_password.get_text()
-    source = self.add_backup_win_source_path_row.get_text()
+    sources = []
+    if self.add_backup_win_home_row.get_active():
+        sources.append("~/")
 
     res = restic.check_repo_status(aws_repo, aws_access_key, aws_secret_key, repo_password)
     if res == "ok":

@@ -7,7 +7,6 @@ class MainView(Gtk.Box):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.set_margin_start(80)
         self.set_margin_end(80)
-        self.set_margin_top(20)
         self.backup_store = backup_store
         self.navigate_callback = navigate_callback
         self.number_of_rendered_children = 0
@@ -40,6 +39,7 @@ class MainView(Gtk.Box):
 
 def create_backup_preview_box(backup_config, navigate_callback):
     list = Gtk.ListBox()
+    list.set_margin_top(20)
     list.get_style_context().add_class("boxed-list")
     list.set_selection_mode(Gtk.SelectionMode.NONE)
 
@@ -151,6 +151,14 @@ def create_backup_preview_box(backup_config, navigate_callback):
         status = backup_config.status.status
         progress = backup_config.status.progress
         running_title.set_text(backup_config.status.status_message)
+        schedule_row.set_subtitle("Every 24 hours" if backup_config.schedule.backup_frequency == "daily" else "Every 7 days" if backup_config.schedule.backup_frequency == "weekly" else "Every hour")
+        last_backup = backup_config.status.last_backup
+        if last_backup is not None:
+            backups = backup_config.status.backups
+            timeago_string = timeago.format(last_backup, datetime.now(timezone.utc))
+            last_backup_row.set_subtitle(f'{timeago_string}')
+        else:
+            last_backup_row.set_subtitle("Never")
         if status == "Idle" and list.last_status != "Idle":
             status_box.set_visible_child_name("idle")
         if status == "Running" and list.last_status != "Running":
