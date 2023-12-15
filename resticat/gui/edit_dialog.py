@@ -1,6 +1,7 @@
 from gi.repository import Gtk, Adw
 import backend.config as config
 import backend.backup_store as backup_store
+from backend import restic
 import uuid
 
 def show_edit_backup_dialog(self, b_store, backup_id):
@@ -149,7 +150,52 @@ def show_edit_backup_dialog(self, b_store, backup_id):
     self.add_backup_win.present()
 
 def on_add_backup_win_add_button_clicked(self, b_store):
-    self.add_backup_win.close()
-    cfg = backup_store.BackupConfig(backup_store.BackupSettings(self.add_backup_win_id_row.get_subtitle(), self.add_backup_win_name_row.get_text(), self.add_backup_win_aws_secret_key_row.get_text(), self.add_backup_win_aws_access_key_row.get_text(), self.add_backup_win_aws_repository_row.get_text(), self.add_backup_win_repository_password.get_text(), self.add_backup_win_source_path_row.get_text()), backup_store.BackupStatus(), backup_store.BackupSchedule())
-    b_store.add_backup_config(cfg)
-    config.save_all_configs(b_store)
+    id = self.add_backup_win_id_row.get_subtitle()
+    name = self.add_backup_win_name_row.get_text()
+    aws_secret_key = self.add_backup_win_aws_secret_key_row.get_text()
+    aws_access_key = self.add_backup_win_aws_access_key_row.get_text()
+    aws_repo = self.add_backup_win_aws_repository_row.get_text()
+    repo_password = self.add_backup_win_repository_password.get_text()
+    source = self.add_backup_win_source_path_row.get_text()
+
+    res = restic.check_repo_status(aws_repo, aws_access_key, aws_secret_key, repo_password)
+    if res == "ok":
+        self.add_backup_win.close()
+        cfg = backup_store.BackupConfig(backup_store.BackupSettings(id, name, aws_secret_key, aws_access_key, aws_repo, repo_password, source), backup_store.BackupStatus(), backup_store.BackupSchedule())
+        b_store.add_backup_config(cfg)
+        config.save_all_configs(b_store)
+    elif res == "norepo":
+        print("repo check failed")
+        dialog = Adw.MessageDialog.new(None, "No Repository Found")
+        dialog.set_body("There was no repository found at the specified location. Do you want to create a new one?")
+        dialog.set_title("No Repository Found")
+        dialog.add_response("cancel", "Cancel")
+        dialog.add_response("ok", "Create")
+        dialog.set_modal(True)
+        dialog.set_visible(True)
+        def create_repo(dialog, response_id):
+            if response_id == "ok":
+                print("create repo")
+                result = restic.init(aws_repo, aws_access_key, aws_secret_key, repo_password)
+                print("create repo result", result)
+                dialog.close()
+            else:
+                print("cancel")
+                dialog.close()
+        dialog.connect("response", create_repo)
+    elif res == "password":
+        print("wrong password")
+        dialog = Adw.MessageDialog.new(None, "Wrong Password")
+        dialog.set_body("The password you entered is wrong.")
+        dialog.set_title("Wrong Password")
+        dialog.add_response("ok", "Ok")
+        dialog.set_modal(True)
+        dialog.set_visible(True)
+    else:
+        print("unknown error")
+        dialog = Adw.MessageDialog.new(None, "Unknown Error")
+        dialog.set_body("An unknown error occured.")
+        dialog.set_title("Unknown Error")
+        dialog.add_response("ok", "Ok")
+        dialog.set_modal(True)
+        dialog.set_visible(True)

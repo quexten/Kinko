@@ -3,7 +3,7 @@ import json
 import os
 
 launch_command = "ionice -c2 nice -n19"
-restic_path = "/app/bin/restic"
+restic_path = "/usr/bin/restic"
 
 def init(repository, access_key_id, secret_access_key, password):
     restic_cmd = f"{launch_command} {restic_path} init --json -r {repository}"
@@ -14,6 +14,23 @@ def init(repository, access_key_id, secret_access_key, password):
     result = subprocess.run(restic_cmd.split(), env=env, capture_output=True, text=True)
     if result.returncode != 0:
         raise Exception("Failed to initialize repository, err", result.stderr)
+
+def check_repo_status(repository, access_key_id, secret_access_key, password):
+    restic_cmd = f"{launch_command} {restic_path} snapshots --json -r {repository}"
+    env = os.environ.copy()
+    env["RESTIC_PASSWORD"] = password
+    env["AWS_ACCESS_KEY_ID"] = access_key_id
+    env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
+    result = subprocess.run(restic_cmd.split(), env=env, capture_output=True, text=True)
+    if result.returncode == 0:
+        return "ok"
+    if result.returncode > 0:
+        if "wrong password" in result.stderr:
+            return "password"
+        elif "Is there a repository" in result.stderr:
+            return "norepo"
+        else:
+            print("unknown error", result.stderr)
 
 def backup(repository, access_key_id, secret_access_key, password, source, ignores, on_progress=None):
     ignores_string = " --exclude " + " --exclude ".join(ignores)
