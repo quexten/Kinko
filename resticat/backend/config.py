@@ -1,7 +1,9 @@
 import json
 import backend.backup_store as backup_store
 import secretstorage
+from pathlib import Path
 import secrets
+from gi.repository import Gtk, Adw, Gdk, Graphene, Gsk, Gio, GLib, GObject
 from Crypto.Cipher import ChaCha20_Poly1305
 from base64 import b64encode, b64decode
 
@@ -42,18 +44,21 @@ def config_to_json(config):
     return json.dumps(config_dict)
 
 def save_all_configs(backup_store):
+    # if config dir does not exist, create
+    Path(GLib.get_user_data_dir()+"/resticat/").mkdir(parents=True, exist_ok=True)
+
     encrypted_configs = []
     for backup_config in backup_store.get_backup_configs():
         config = config_to_json(backup_config)
         encrypted_config = encrypt_string(config, get_application_encryption_key())
         encrypted_configs.append(encrypted_config)
     encrypted_configs = "\n".join(encrypted_configs)
-    with open(".config", "w") as f:
+    with open(GLib.get_user_data_dir() + "/resticat/config", "w") as f:
         f.write(encrypted_configs)
 
 def read_all_configs():
     try:
-        with open(".config", "r") as f:
+        with open(GLib.get_user_data_dir() + "/resticat/config", "r") as f:
             encrypted_configs = f.read()
         encrypted_configs = encrypted_configs.split("\n")
         configs = []
