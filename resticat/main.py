@@ -8,7 +8,7 @@ from gui.edit_dialog import show_edit_backup_dialog
 from gui.history_view import HistoryView
 from gui.schedule_view import ScheduleView
 from gui.status_view import StatusView
-
+from gui.restore_view import RestoreView
 from gi.repository import Gtk, Adw, Gdk, Graphene, Gsk, Gio, GLib, GObject
 import backend.backup_store as backup_store
 import backend.backup_executor as backup_executor
@@ -16,10 +16,13 @@ import event_monitors.power_monitor as power_monitor
 import event_monitors.network_monitor as network_monitor
 from gui.main_view import MainView
 import backend.config as config
+from backend import restic
+import re
 
 # load config
 b = backup_store.BackupStore()
 configs = config.read_all_configs()
+
 for cfg in configs:
     b.add_backup_config(cfg)
 
@@ -65,7 +68,14 @@ class MainWindow(Gtk.ApplicationWindow):
         self.status_view_scrolled.set_hexpand(False)
         self.status_view_scrolled.set_child(self.status_view)
         self.stack.add_named(self.status_view_scrolled, "status")
-    
+
+        self.restore_view = RestoreView(b, be, self.navigate)
+        self.restore_view_scrolled = Gtk.ScrolledWindow()
+        self.restore_view_scrolled.set_vexpand(True)
+        self.restore_view_scrolled.set_hexpand(False)
+        self.restore_view_scrolled.set_child(self.restore_view)
+        self.stack.add_named(self.restore_view_scrolled, "restore")
+
         self.set_default_size(700, 700)
         self.set_title("Resticat")
         self.navigate("main", None)
@@ -87,6 +97,9 @@ class MainWindow(Gtk.ApplicationWindow):
             self.history_view.navigate_to(param, self)
         elif view == "status":
             print("status")
+        elif view == "restore":
+            self.stack.set_visible_child(self.restore_view_scrolled)
+            self.restore_view.navigate_to(param, self)
         else:
             raise Exception("Unknown view")
 class MyApp(Adw.Application):

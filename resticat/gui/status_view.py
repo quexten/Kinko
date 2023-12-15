@@ -52,10 +52,10 @@ class StatusView(Gtk.Box):
         self.status_box_running.set_margin_end(10)
         self.status_box_running.set_margin_top(10)
         self.status_box_running.set_margin_bottom(10)
-        self.title = Gtk.Label(label="Backing up...")
-        self.title.set_markup("<b>Backing up...</b>")
-        self.title.set_halign(Gtk.Align.START)
-        self.status_box_running.append(self.title)
+        self.running_title = Gtk.Label(label="Backing up...")
+        self.running_title.set_markup("<b>Backing up...</b>")
+        self.running_title.set_halign(Gtk.Align.START)
+        self.status_box_running.append(self.running_title)
 
         self.subtitle = Gtk.Label(label="Calculating time remaining")
         self.subtitle.set_halign(Gtk.Align.START)
@@ -142,17 +142,12 @@ class StatusView(Gtk.Box):
                 self.status_box.set_visible_child_name("idle")
             elif backup_config.status.status == "Running" and self.last_status != "Running":
                 self.status_box.set_visible_child_name("running")
+                self.running_title.set_text(backup_config.status.message)
             elif backup_config.status.status == "Error" and self.last_status != "Error":
                 self.status_box.set_visible_child_name("error")
             self.last_status = backup_config.status.status
 
-            
 
-            # self.backup_config_view_status_row.set_title("<b>"+backup_config.settings.name+"</b>")
-            # self.backup_config_view_status_row.set_subtitle("S3 Provider")
-            # self.progress_box_title.set_text("Backing up...")
-            # if not backup_config.status.files is None:
-            #     self.progress_box_description_label.set_text("{}/{} files".format(int(round(backup_config.status.files, 1)), backup_config.status.max_files))
             self.progress_bar.set_fraction(backup_config.status.progress)
             self.progress_bar.set_text(str(round(backup_config.status.progress * 100, 2))+ "%")
             self.files_progress.set_text("{}/{} files".format(int(round(backup_config.status.files, 1)), backup_config.status.max_files))

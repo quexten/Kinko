@@ -91,7 +91,61 @@ class BackupExecutor():
                 print("Error getting snapshots", e)
         self.backup_store.notify_update()
 
+    def restore_now(self, id, snapshot_id, files):
+        thread = threading.Thread(target=self.run_restore, args=(id, snapshot_id, files))
+        thread.start()
+
+    def run_restore(self, id, snapshot_id, files):
+        backup_config = self.backup_store.get_backup_config(id)
+        if backup_config is None:
+            return False
+        backup_config.status.status = "Running"
+        backup_config.status.progress = 0
+        backup_config.status.message = "Starting restore"
+        backup_config.status.files = 0
+        backup_config.status.max_files = 0
+        backup_config.status.bytes_processed = 0
+        backup_config.status.bytes_total = 0
+        backup_config.status.seconds_elapsed = 0
+        backup_config.status.seconds_remaining = None
+        print("Starting restore")
+
+        def on_progress(status):
+            if status.get("message_type") == "status":
+                backup_config.status.progress = status.get("percent_done")
+                backup_config.status.message = "Restoring..."
+                backup_config.status.files = status.get("files_done")
+                if "files_restored" in status:
+                    backup_config.status.files = status.get("files_restored")
+                backup_config.status.max_files = status.get("total_files")
+                backup_config.status.bytes_processed = status.get("bytes_done")
+                if "bytes_restored" in status:
+                    backup_config.status.bytes_processed = status.get("bytes_restored")
+                backup_config.status.bytes_total = status.get("total_bytes")
+                backup_config.status.seconds_elapsed = status.get("seconds_elapsed")
+                backup_config.status.seconds_remaining = status.get("seconds_remaining")
+                if status.get("percent_done") == 1:
+                    backup_config.status.message = "Restore complete"
+                    backup_config.status.status = "Idle"
+                   
+            if status.get("message_type") == "summary":
+                backup_config.status.status = "Idle"
+                backup_config.status.message = "Restore complete"
+                self.backup_store.notify_update()
+
+        try:
+            restic.restore(backup_config.settings.aws_s3_repository, backup_config.settings.aws_s3_access_key, backup_config.settings.aws_s3_secret_key, backup_config.settings.repository_password, snapshot_id, files, on_progress=on_progress)
+        except Exception as e:
+            backup_config.status.status = "Error"
+            backup_config.status.message = "Restore failed"
+            print("error running restore", e)
+            return False
+
+        print("Restore complete")
+        return True
+
     def backup_now(self, id):
+        # return
         thread = threading.Thread(target=self.run_backup, args=(id,))
         thread.start()
 
@@ -116,6 +170,7 @@ class BackupExecutor():
                 return True
 
     def clean_now(self, id):
+        # return
         thread = threading.Thread(target=self.run_clean, args=(id,))
         thread.start()
 
@@ -143,7 +198,6 @@ class BackupExecutor():
                 backup_config.status.max_files = status.get("total_files")
                 backup_config.status.bytes_processed = status.get("bytes_done")
                 backup_config.status.bytes_total = status.get("total_bytes")
-                backup_config.status.seconds_elapsed = status.get("seconds_elapsed")
                 backup_config.status.seconds_remaining = status.get("seconds_remaining")
                 if status.get("percent_done") == 1:
                     backup_config.status.last_backup = datetime.now(timezone.utc)
@@ -169,7 +223,6 @@ class BackupExecutor():
             ignores.append(".npm/")
             ignores.append(".mozilla/firefox/")
             ignores.append(".vscode/extensions/")
-            ignores.append(".var/app/")
             ignores.append(".wine")
             ignores.append("go/pkg/mod/")
             ignores.append(".git/objects/pack/")

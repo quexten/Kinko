@@ -18,8 +18,7 @@ class HistoryView(Gtk.Box):
 
         self.history_list = Gtk.ListBox()
         self.history_list.get_style_context().add_class("boxed-list")
-        self.history_list.set_selection_mode(Gtk.SelectionMode.NONE)
-        self.history_list.connect("row-activated", lambda listbox, button: self.show_edit_backup_dialog(listbox, self.selected_id))
+        self.history_list.connect("row-activated", lambda listbox, button: navigate("restore", self))
         self.append(self.history_list)
 
     def navigate_to(self, param, window):
@@ -47,4 +46,5 @@ class HistoryView(Gtk.Box):
             row.set_title(backup.get("time").strftime("%Y-%m-%d %H:%M:%S"))
             row.set_subtitle(backup.get("short_id"))
             row.set_icon_name("emblem-default-symbolic")
+            row.set_activatable(True)
             self.history_list.append(row)

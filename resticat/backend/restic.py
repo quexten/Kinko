@@ -79,6 +79,25 @@ def snapshots(repository, access_key_id, secret_access_key, password):
         raise Exception("Failed to get snapshots, err", result.stderr)
     return json.loads(result.stdout)
 
+def files_for_snapshot(repository, access_key_id, secret_access_key, password, snapshot_id):
+    restic_cmd = f"{launch_command} {restic_path} ls --tag com.quexten.resticat --json -r {repository} {snapshot_id}"
+    env = os.environ.copy()
+    env["RESTIC_PASSWORD"] = password
+    env["AWS_ACCESS_KEY_ID"] = access_key_id
+    env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
+    result = subprocess.run(restic_cmd.split(), env=env, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise Exception("Failed to get files for snapshot, err", result.stderr)
+    
+    results = []
+    for line in result.stdout.split("\n")[1:]:
+        try:
+            res = json.loads(line)
+            results.append(res)
+        except:
+            pass
+    return results    
+
 def stats(repository, access_key_id, secret_access_key, password):
     restic_cmd = launch_command + f"restic stats --json -r {repository}"
     env = os.environ.copy()
@@ -103,6 +122,41 @@ def forget(repository, access_key_id, secret_access_key, password, keep_hourly, 
         print(output.strip())
     
     result.wait()
+    return result
+
+def restore(repository, access_key_id, secret_access_key, password, snapshot_id, files, on_progress=None):
+    files_string = "--include " + " --include ".join(files)
+    if len(files) == 0:
+        files_string = ""
+    restic_cmd = f"{launch_command} {restic_path} restore --tag com.quexten.resticat -r {repository} {files_string} {snapshot_id} --json --target /"
+    env = os.environ.copy()
+    env["RESTIC_PASSWORD"] = password
+    env["AWS_ACCESS_KEY_ID"] = access_key_id
+    env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
+    process = subprocess.Popen(restic_cmd.split(), stdout=subprocess.PIPE, env=env)
+
+    result = None
+
+    for line in iter(process.stdout.readline, b""):
+        output = line.decode("utf-8")
+        try:
+            status = json.loads(output)
+            if on_progress is not None:
+                if status.get("message_type") == "summary":
+                    result = status
+                else:
+                    on_progress(status)
+            else:
+                print(output.strip())
+        except json.JSONDecodeError:
+            print(output.strip())
+    process.wait()
+    
+    # if error raise exception
+    if process.returncode != 0:
+        print(process.returncode)
+        raise Exception("Failed to restore errcode" + str(process.returncode) + "+ err" + process.stderr)
+
     return result
 
 def prune(repository, access_key_id, secret_access_key, password):
