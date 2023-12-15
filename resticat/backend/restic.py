@@ -4,6 +4,9 @@ import os
 
 launch_command = "ionice -c2 nice -n19"
 restic_path = "/usr/bin/restic"
+# if not exists change to /app/bin/restic
+if not os.path.exists(restic_path):
+    restic_path = "/app/bin/restic"
 
 def init(repository, access_key_id, secret_access_key, password):
     restic_cmd = f"{launch_command} {restic_path} init --json -r {repository}"
