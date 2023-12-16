@@ -80,7 +80,7 @@ def snapshots(repository, access_key_id, secret_access_key, password):
     return json.loads(result.stdout)
 
 def files_for_snapshot(repository, access_key_id, secret_access_key, password, snapshot_id):
-    restic_cmd = f"{launch_command} {restic_path} ls --tag com.quexten.resticat --json -r {repository} {snapshot_id}"
+    restic_cmd = f"{launch_command} {restic_path} ls --json -r {repository} {snapshot_id}"
     env = os.environ.copy()
     env["RESTIC_PASSWORD"] = password
     env["AWS_ACCESS_KEY_ID"] = access_key_id
@@ -113,7 +113,7 @@ def forget(repository, access_key_id, secret_access_key, password, keep_hourly, 
     restic_cmd = f"{launch_command} {restic_path} forget -r {repository} --prune --tag com.quexten.resticat --keep-hourly {keep_hourly} --keep-daily {keep_daily} --keep-weekly {keep_weekly} --keep-monthly {keep_monthly} --keep-yearly {keep_yearly}"
     env = os.environ.copy()
     env["RESTIC_PASSWORD"] = password 
-    # env["AWS_ACCESS_KEY_ID"] = d
+    env["AWS_ACCESS_KEY_ID"] = access_key_id
     env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
     result = subprocess.Popen(restic_cmd.split(), stdout=subprocess.PIPE, env=env)
 

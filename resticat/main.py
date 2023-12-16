@@ -4,11 +4,12 @@ import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 
-from gui.edit_dialog import show_edit_backup_dialog
+from gui.edit_view import EditView
 from gui.history_view import HistoryView
 from gui.schedule_view import ScheduleView
 from gui.status_view import StatusView
 from gui.restore_view import RestoreView
+from gui.edit_view import EditView
 from gi.repository import Gtk, Adw, Gdk, Graphene, Gsk, Gio, GLib, GObject
 import backend.backup_store as backup_store
 import backend.backup_executor as backup_executor
@@ -76,6 +77,13 @@ class MainWindow(Gtk.ApplicationWindow):
         self.restore_view_scrolled.set_child(self.restore_view)
         self.stack.add_named(self.restore_view_scrolled, "restore")
 
+        self.edit_view = EditView(b, self.navigate)
+        self.edit_view_scrolled = Gtk.ScrolledWindow()
+        self.edit_view_scrolled.set_vexpand(True)
+        self.edit_view_scrolled.set_hexpand(False)
+        self.edit_view_scrolled.set_child(self.edit_view)
+        self.stack.add_named(self.edit_view_scrolled, "edit")
+
         self.set_default_size(700, 700)
         self.set_title("Resticat")
         self.navigate("main", None)
@@ -88,7 +96,8 @@ class MainWindow(Gtk.ApplicationWindow):
             self.stack.set_visible_child(self.schedule_view_scrolled)
             self.schedule_view.navigate_to(param, self)
         elif view == "edit":
-            show_edit_backup_dialog(self, b, param)
+            self.stack.set_visible_child(self.edit_view_scrolled)
+            self.edit_view.navigate_to(param, self)
         elif view == "status":
             self.stack.set_visible_child(self.status_view_scrolled)
             self.status_view.navigate_to(param, self)

@@ -1,6 +1,8 @@
 from gi.repository import Gtk, Adw, Gdk, Graphene, Gsk, Gio, GLib, GObject
 import backend.config as config
 from backend import restic
+import os
+import threading
 
 def userdata_filter(path):
     if path.startswith("Documents"):
@@ -43,37 +45,37 @@ def config_filter(path):
     if path == ".config/rclone/rclone.conf":
         return {
             "type": "config",
-            "app": "rclone",
+            "app": "Rclone",
             "path": ".config/rclone/"
         }
     elif path == ".config/mpv/mpv.conf":
         return {
             "type": "config",
-            "app": "mpv",
+            "app": "Mpv",
             "path": ".config/mpv/"
         }
     elif path == ".config/goldwarden.json":
         return {
             "type": "config",
-            "app": "goldwarden",
+            "app": "Goldwarden",
             "path": ".config/goldwarden.json"
         }
     elif path.startswith(".config/evolution"):
         return {
             "type": "config",
-            "app": "evolution",
+            "app": "Evolution",
             "path": ".config/evolution/"
         }
     elif path.startswith(".ssh/"):
         return {
             "type": "config",
-            "app": "ssh",
+            "app": "SSH",
             "path": ".ssh/"
         }
     elif path.startswith(".gitconfig"):
         return {
             "type": "config",
-            "app": "git",
+            "app": "Git",
             "path": ".gitconfig"
         }
     elif path.startswith(".config/i3/config"):
@@ -85,7 +87,7 @@ def config_filter(path):
     elif path.startswith(".config/Code"):
         return {
             "type": "config",
-            "app": "vscode",
+            "app": "VSCode",
             "path": ".config/Code/"
         }
     
@@ -118,11 +120,11 @@ filters = [flatpak_data_filter, config_filter, userdata_filter]
 
 def get_description(result):
     if result["type"] == "userdata":
-        return f'{result["app"]} ({len(result["files"])}) Files'
+        return f'{len(result["files"])} Files'
     elif result["type"] == "flatpak":
         return f'{result["app"]}'
     elif result["type"] == "config":
-        return f'{result["app"]}'
+        return f'{result["path"]}'
     else:
         return ""
 
@@ -133,11 +135,13 @@ class RestoreView(Gtk.Box):
         self.backup_executor = backup_executor
         self.navigate_callback = navigate_callback
 
-    def navigate_to(self, param, window):
+    def load(self, config_id, snapshot_id):
         # remove old widgets
-        firstchild = self.get_first_child()
-        while self.get_first_child() is not None:
-            self.remove(self.get_first_child())
+        snapshot = None
+        for sn in self.backup_store.get_backup_config(config_id).status.backups:
+            if sn["short_id"] == snapshot_id:
+                snapshot = sn
+                break
 
         results = {
             "userdata": [],
@@ -145,15 +149,15 @@ class RestoreView(Gtk.Box):
             "config": [],
         }
 
-        cfg = self.backup_store.get_backup_configs()[1]
+        cfg = self.backup_store.get_backup_config(config_id)
         self.id = cfg.settings.id
         print("getting files for snapshot")
-        files = restic.files_for_snapshot(cfg.settings.aws_s3_repository, cfg.settings.aws_s3_access_key, cfg.settings.aws_s3_secret_key, cfg.settings.repository_password, "latest")
+        files = restic.files_for_snapshot(cfg.settings.aws_s3_repository, cfg.settings.aws_s3_access_key, cfg.settings.aws_s3_secret_key, cfg.settings.repository_password, snapshot_id)
         print("got files for snapshot")
 
         print("analyzing files")
         for file in files:
-            path = file["path"].replace("/home/quexten/", "")
+            path = file["path"].replace(os.path.expanduser('~') + "/", "")
             for f in filters:
                 result = f(path)
                 if result is not None:
@@ -169,9 +173,20 @@ class RestoreView(Gtk.Box):
                             list(filter(lambda x: x["app"] == result["app"], result_list))[0]["files"].append(path)
                     break
         print("analyzed files")
+        GLib.idle_add(self.display_ui, snapshot_id, snapshot, results)
+
+    def display_ui(self, snapshot_id, snapshot, results):
+        firstchild = self.get_first_child()
+        while self.get_first_child() is not None:
+            self.remove(self.get_first_child())
 
         self.preferences_page = Adw.PreferencesPage()
         self.append(self.preferences_page)
+
+        self.title_group = Adw.PreferencesGroup()
+        self.title_group.set_title(f'Snapshot - {snapshot_id}')
+        self.title_group.set_description(snapshot["time"].strftime("%Y-%m-%d %H:%M:%S"))
+        self.preferences_page.add(self.title_group)
 
         self.userdata_group = Adw.PreferencesGroup()
         self.userdata_group.set_title("User Data")
@@ -229,19 +244,46 @@ class RestoreView(Gtk.Box):
 
         self.button = Gtk.Button(label="Restore")
         self.button.get_style_context().add_class("suggested-action")
-        self.button.connect("clicked", lambda _: self.restore(results))
+        self.button.connect("clicked", lambda _: self.restore(results, snapshot_id))
         self.button.set_margin_start(160)
         self.button.set_margin_end(160)
+        self.button.set_margin_bottom(10)
         self.append(self.button)
+
+    def navigate_to(self, param, window):
+        while self.get_first_child() is not None:
+            self.remove(self.get_first_child())
+        # add loading spinner
+        self.loading_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.loading_box.set_halign(Gtk.Align.CENTER)
+        self.loading_box.set_valign(Gtk.Align.CENTER)
+        self.loading_box.set_vexpand(True)
+        self.append(self.loading_box)
+        self.loading_label = Gtk.Label(label="Loading...")
+        self.loading_label.set_halign(Gtk.Align.CENTER)
+        self.loading_label.set_valign(Gtk.Align.CENTER)
+        self.loading_label.set_hexpand(True)
+        self.loading_label.set_vexpand(True)
+        self.loading_label.get_style_context().add_class("title-1")
+        self.loading_box.append(self.loading_label)
+
+
+        config_id, snapshot_id = param
+
+        thread = threading.Thread(target=self.load, args=(config_id, snapshot_id))
+        thread.start()
+     
+
+        
     
-    def restore(self, results):
+    def restore(self, results, snapshot):
         paths = []
         for key in results:
             for result in results[key]:
                 if result["active"]:
-                    paths.append("/home/quexten" + "/" + result["path"])
+                    paths.append(os.path.expanduser('~') + "/" + result["path"])
         if len(paths) == 0:
             return
 
-        self.backup_executor.restore_now(self.id, "latest", paths)
+        self.backup_executor.restore_now(self.id, snapshot, paths)
         self.navigate_callback("main", None)

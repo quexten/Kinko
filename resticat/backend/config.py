@@ -16,7 +16,7 @@ def config_to_json(config):
         "aws_s3_access_key": config.settings.aws_s3_access_key,
         "aws_s3_repository": config.settings.aws_s3_repository,
         "repository_password": config.settings.repository_password,
-        "source_path": config.settings.source_path,
+        "sources": config.settings.sources,
         "ignores_cache": config.settings.ignores_cache,
         "ignore_trash": config.settings.ignore_trash,
         "ignore_downloads": config.settings.ignore_downloads,
@@ -81,7 +81,7 @@ def json_to_config(json_cfg):
         config_dict["settings"]["aws_s3_access_key"],
         config_dict["settings"]["aws_s3_repository"],
         config_dict["settings"]["repository_password"],
-        config_dict["settings"]["source_path"],
+        config_dict["settings"]["sources"],
     )
     backup_schedule = backup_store.BackupSchedule(
     )

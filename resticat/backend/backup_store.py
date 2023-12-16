@@ -29,14 +29,14 @@ class BackupSchedule():
         self.cleanup_keep_yearly = 0
 
 class BackupSettings():
-    def __init__(self, id, name, aws_s3_secret_key, aws_s3_access_key, aws_s3_repository, repository_password, source_path):
+    def __init__(self, id, name, aws_s3_secret_key, aws_s3_access_key, aws_s3_repository, repository_password, sources):
         self.id = id
         self.name = name
         self.aws_s3_secret_key = aws_s3_secret_key
         self.aws_s3_access_key = aws_s3_access_key
         self.aws_s3_repository = aws_s3_repository
         self.repository_password = repository_password
-        self.source_path = source_path
+        self.sources = sources
         self.ignores_cache = True
         self.ignore_trash = True
         self.ignore_downloads = True

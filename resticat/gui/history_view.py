@@ -18,7 +18,7 @@ class HistoryView(Gtk.Box):
 
         self.history_list = Gtk.ListBox()
         self.history_list.get_style_context().add_class("boxed-list")
-        self.history_list.connect("row-activated", lambda listbox, button: navigate("restore", self))
+        self.history_list.connect("row-activated", lambda listbox, button: navigate("restore", (self.selected_id, button.get_subtitle())))
         self.append(self.history_list)
 
     def navigate_to(self, param, window):

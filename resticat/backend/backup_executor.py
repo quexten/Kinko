@@ -2,6 +2,7 @@ import threading
 import time
 import backend.restic as restic
 from datetime import datetime, timezone
+import os
 
 class BackupExecutor():
     def __init__(self, backup_store):
@@ -260,7 +261,7 @@ class BackupExecutor():
             ignores.append(".local/share/containers/")
 
         try:
-            restic.backup(backup_config.settings.aws_s3_repository, backup_config.settings.aws_s3_access_key, backup_config.settings.aws_s3_secret_key, backup_config.settings.repository_password, backup_config.settings.source_path, ignores, on_progress=on_progress)
+            restic.backup(backup_config.settings.aws_s3_repository, backup_config.settings.aws_s3_access_key, backup_config.settings.aws_s3_secret_key, backup_config.settings.repository_password, backup_config.settings.sources[0].replace("~", os.path.expanduser('~')) , ignores, on_progress=on_progress)
             backup_config.status.status = "Idle"
             backup_config.status.message = "Backup complete"
             backup_config.status.status_message = "Idle"
