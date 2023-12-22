@@ -2,3 +2,4 @@ __pycache__
 .config
 .flatpak-builder
 build-dir
+.vscode
