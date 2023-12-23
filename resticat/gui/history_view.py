@@ -1,4 +1,4 @@
-from gi.repository import Gtk, Adw, GObject, GLib
+from gi.repository import Gtk, Adw
 
 class HistoryView(Gtk.Box):
     def __init__(self, backup_store, navigate):

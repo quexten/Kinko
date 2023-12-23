@@ -1,4 +1,4 @@
-from gi.repository import Gtk, GLib, Adw, GObject
+from gi.repository import Gtk, Adw, GObject
 from datetime import datetime, timezone, timedelta
 import timeago
 
@@ -190,6 +190,6 @@ def create_backup_preview_box(backup_config, navigate_callback):
 
 
         if not list.destroyed:
-            GObject.timeout_add(100, update_gui)
-    GObject.timeout_add(100, lambda: update_gui())
+            GObject.timeout_add(1000, update_gui)
+    GObject.timeout_add(1000, lambda: update_gui())
     return list

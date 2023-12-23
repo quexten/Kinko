@@ -3,7 +3,6 @@ import time
 import backend.restic as restic
 from datetime import datetime, timezone
 import os
-
 class BackupExecutor():
     def __init__(self, backup_store):
         self.backup_store = backup_store

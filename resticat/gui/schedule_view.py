@@ -1,4 +1,4 @@
-from gi.repository import Gtk, Adw, Gdk, Graphene, Gsk, Gio, GLib, GObject
+from gi.repository import Gtk, Adw, Gio
 import backend.config as config
 
 class ScheduleView(Gtk.Box):

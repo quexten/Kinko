@@ -3,7 +3,7 @@ import backend.backup_store as backup_store
 import secretstorage
 from pathlib import Path
 import secrets
-from gi.repository import Gtk, Adw, Gdk, Graphene, Gsk, Gio, GLib, GObject
+from gi.repository import GLib
 from Crypto.Cipher import ChaCha20_Poly1305
 from base64 import b64encode, b64decode
 
@@ -67,6 +67,7 @@ def read_all_configs():
                 config = decrypt_string(encrypted_config, get_application_encryption_key())
                 configs.append(json_to_config(config))
             except:
+                print("Failed to decrypt config")
                 pass
         return configs
     except Exception as ex:

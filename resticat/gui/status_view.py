@@ -121,7 +121,7 @@ class StatusView(Gtk.Box):
 
         def update_timer():
             if not self.destroyed:
-                GObject.timeout_add(100, update_timer)
+                GObject.timeout_add(1000, update_timer)
             
             if not "selected_id" in self.__dict__:
                 return
@@ -180,7 +180,7 @@ class StatusView(Gtk.Box):
                 else:
                     next_backup_time = backup_config.status.last_backup + timedelta(hours=(1 if backup_config.schedule.backup_frequency == "hourly" else (24 if backup_config.schedule.backup_frequency == "daily" else 7 * 24)))
                     self.status_box_idle.set_subtitle("Upcoming Backup - {}".format(next_backup_time.strftime("%H:%M")))
-        GObject.timeout_add(100, lambda: update_timer())
+        GObject.timeout_add(1000, lambda: update_timer())
 
     def navigate_to(self, param, window):
         self.selected_id = param

@@ -4,8 +4,6 @@ import backend.backup_store as backup_store
 from backend import restic
 import uuid
 
-from gi.repository import Gtk, Adw, GObject, GLib
-
 class EditView(Gtk.Box):
     def __init__(self, backup_store, navigate):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)

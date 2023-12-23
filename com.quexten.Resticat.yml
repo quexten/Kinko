@@ -4,22 +4,12 @@ runtime-version: '45'
 sdk: org.gnome.Sdk
 command: main.py
 finish-args:
-  # - --share=ipc
   - --share=network
   - --socket=wayland
   - --socket=fallback-x11
   - --talk-name=org.freedesktop.secrets
   - --filesystem=home
-  # - --socket=x11
-  # - --device=dri
-  # - --env=XDG_CURRENT_DESKTOP=Unity
-  # - --env=XCURSOR_PATH=/run/host/user-share/icons:/run/host/share/icons
-  # - --talk-name=org.kde.StatusNotifierWatcher
-  # - --talk-name=org.freedesktop.Notifications
-  # - --talk-name=org.freedesktop.portal.Background
-  # - --talk-name=com.canonical.AppMenu.Registrar
-  # - --system-talk-name=org.freedesktop.login1
-  # - --filesystem=xdg-download
+  - --device=dri
 modules:
   - name: resticat
     buildsystem: simple
@@ -31,6 +21,9 @@ modules:
       - install -D restic_0.16.2_linux_amd64  /app/bin/restic
       - pip3 install --prefix=/app timeago secretstorage pycryptodome chacha20
       - install -D main.py /app/bin/main.py
+      - install -D app.py /app/bin/app.py
+      - install -D autostart.py /app/bin/autostart.py
+
       - install -D com.quexten.Resticat.desktop /app/share/applications/com.quexten.Resticat.desktop
       - install -D resticat.svg /app/share/icons/hicolor/scalable/apps/com.quexten.Resticat.svg
       - cp -R gui/ /app/bin/gui/

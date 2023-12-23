@@ -1,5 +1,4 @@
-from gi.repository import Gtk, Adw, Gdk, Graphene, Gsk, Gio, GLib, GObject
-import backend.config as config
+from gi.repository import Gtk, Adw, GLib
 from backend import restic
 import os
 import threading
