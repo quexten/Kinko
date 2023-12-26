@@ -1,4 +1,29 @@
-from gi.repository import Gtk, Adw
+from gi.repository import Gtk, Adw, Gio, GObject
+
+class BackupEntry(GObject.Object):
+  __gtype_name__ = 'BackupEntry'
+
+  def __init__(self, name, backup_id, host):
+    super().__init__()
+
+    self._name = name
+    self._id = backup_id
+    self._host = host
+
+  @GObject.Property(type=str)
+  def name(self):
+    return self._name
+
+
+  @GObject.Property(type=int)
+  def id(self):
+    return self._id
+
+  @GObject.Property(type=str)
+  def host(self):
+    return self._host
+    
+
 
 class HistoryView(Gtk.Box):
     def __init__(self, backup_store, navigate):
@@ -6,45 +31,62 @@ class HistoryView(Gtk.Box):
         self.backup_store= backup_store
         self.navigate_callback = navigate
         
-        self.set_margin_start(80)
-        self.set_margin_end(80)
-        self.set_margin_top(10)
-        self.set_margin_bottom(10)
-        
-        self.history_label = Gtk.Label(label="")
-        self.history_label.set_markup("<b>History</b>")
-        self.history_label.set_halign(Gtk.Align.START)
-        self.append(self.history_label)
+        filter_factory = Gtk.SignalListItemFactory()
+        filter_factory.connect('setup', self.factory_setup)
+        filter_factory.connect('bind', self.factory_bind)
 
-        self.history_list = Gtk.ListBox()
-        self.history_list.get_style_context().add_class("boxed-list")
-        self.history_list.connect("row-activated", lambda listbox, button: navigate("restore", (self.selected_id, button.get_subtitle())))
-        self.append(self.history_list)
+        self.filter_model = Gio.ListStore(item_type=BackupEntry)
+
+        self.listview = Gtk.ListView.new(factory=filter_factory, model=Gtk.MultiSelection.new(self.filter_model))
+        scrolled_window = Gtk.ScrolledWindow()
+        scrolled_window.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        scrolled_window.set_child(self.listview)
+        scrolled_window.set_vexpand(True)
+        scrolled_window.get_style_context().add_class("linked")
+        self.append(scrolled_window)
+
+        self.listview.connect("activate", self.on_selected)
+
+    def on_selected(self, listview, index):
+        model = self.listview.get_model()
+        backup = model.get_item(index)
+        self.navigate_callback("restore", (self.selected_id, backup.id))
+
+    def factory_setup(self, factory, list_item):
+        row = Adw.ActionRow()
+        row.set_title("Backup")
+        row.set_subtitle("Id")
+        row.set_icon_name("emblem-default-symbolic")
+        row.set_activatable(True)
+        label = Gtk.Label()
+        label.set_text("Backup")
+        row.add_suffix(label)
+        row.label = label
+        list_item.set_child(row)
+
+    def factory_bind(self, factory, list_item):
+        row = list_item.get_child()
+        row_item = list_item.get_item()
+        row.set_title(row_item.name)
+        row.set_subtitle(row_item.id)
+        row.label.set_text(row_item.host)
 
     def navigate_to(self, param, window):
         self.selected_id = param
         self.header = Gtk.HeaderBar()
         self.back_button = Gtk.Button(label="Back")
         def back_button_clicked(button):
-            while self.history_list.get_first_child() is not None:
-                self.history_list.remove(self.history_list.get_first_child())
             self.navigate_callback("main", None)
         self.back_button.connect("clicked", lambda _: back_button_clicked(self.back_button))
         self.header.pack_start(self.back_button)
         window.set_titlebar(self.header)
 
-        self.render_list(window)
+        self.filter_model = Gio.ListStore(item_type=BackupEntry)
 
-    def render_list(self, window):
-        # update list
-        while self.history_list.get_first_child() is not None:
-            self.history_list.remove(self.history_list.get_first_child())
-        backups = self.backup_store.get_backup_config(self.selected_id).status.backups
+        backups = reversed(self.backup_store.get_backup_config(self.selected_id).status.backups)
+        backups = list(backups)
+        backups = filter(lambda x: ("tags" in x) and ("com.quexten.resticat" in x.get("tags")), backups)
 
-        for backup in reversed(backups):
-            row = Adw.ActionRow()
-            row.set_title(backup.get("time").strftime("%Y-%m-%d %H:%M:%S"))
-            row.set_subtitle(backup.get("short_id"))
-            row.set_icon_name("emblem-default-symbolic")
-            row.set_activatable(True)
-            self.history_list.append(row)
+        for backup in backups:
+            self.filter_model.append(BackupEntry(backup.get("time").strftime("%Y-%m-%d %H:%M:%S"), backup.get("short_id"), backup.get("hostname")))
+        self.listview.set_model(Gtk.SingleSelection.new(self.filter_model))

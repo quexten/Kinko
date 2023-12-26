@@ -2,130 +2,119 @@ from gi.repository import Gtk, Adw, GLib
 from backend import restic
 import os
 import threading
+import humanize
+from multiprocessing import Pool
+import time
+import polars as pl
 
-def userdata_filter(path):
-    if path.startswith("Documents"):
-        return {
-            "type": "userdata",
-            "app": "Documents",
-            "path": "Documents"
-        }
-    elif path.startswith("Music"):
-        return {
-            "type": "userdata",
-            "app": "Music",
-            "path": "Music"
-        }
-    elif path.startswith("Pictures"):
-        return {
-            "type": "userdata",
-            "app": "Pictures",
-            "path": "Pictures"
-        }
-    else:
-        return None
+userdata_filter = [
+    {
+        "type": "userdata",
+        "app": "Documents",
+        "path": "Documents",
+        "icon": "folder-documents-symbolic"
+    },
+    {
+        "type": "userdata",
+        "app": "Music",
+        "path": "Music",
+        "icon": "folder-music-symbolic"
+    },
+    {
+        "type": "userdata",
+        "app": "Pictures",
+        "path": "Pictures",
+        "icon": "folder-pictures-symbolic"
+    },
+    {
+        "type": "userdata",
+        "app": "Projects",
+        "path": "projects",
+        "icon": "folder-symbolic"
+    },
+    {
+        "type": "userdata",
+        "app": "Projects",
+        "path": "Projects",
+        "icon": "folder-symbolic"
+    },
+    {
+        "type": "userdata",
+        "app": "Go Sources",
+        "path": "go/src",
+        "icon": "folder-symbolic"
+    }
+]
 
-def flatpak_data_filter(path):
-    if ".var/app" in path:
-        # extract app id
-        try:
-            app = path.split(".var/app/")[1].split("/")[0]
-            return {
-                "type": "flatpak",
-                "app": app,
-                "path": ".var/app/" + app + "/"
-            }
-        except:
-            return None
-    else:
-        return None
+config_filter = [
+    {
+        "type": "config",
+        "app": "Rclone",
+        "path": ".config/rclone/"
+    },
+    {
+        "type": "config",
+        "app": "Mpv",
+        "path": ".config/mpv/"
+    },
+    {
+        "type": "config",
+        "app": "Goldwarden",
+        "path": ".config/goldwarden.json"
+    },
+    {
+        "type": "config",
+        "app": "Evolution",
+        "path": ".config/evolution/"
+    },
+    {
+        "type": "config",
+        "app": "SSH",
+        "path": ".ssh/"
+    },
+    {
+        "type": "config",
+        "app": "Git",
+        "path": ".gitconfig"
+    },
+    {
+        "type": "config",
+        "app": "i3",
+        "path": ".config/i3/"
+    },
+    {
+        "type": "config",
+        "app": "VSCode",
+        "path": ".config/Code/"
+    }
+]
 
-def config_filter(path):
-    if path == ".config/rclone/rclone.conf":
-        return {
-            "type": "config",
-            "app": "Rclone",
-            "path": ".config/rclone/"
-        }
-    elif path == ".config/mpv/mpv.conf":
-        return {
-            "type": "config",
-            "app": "Mpv",
-            "path": ".config/mpv/"
-        }
-    elif path == ".config/goldwarden.json":
-        return {
-            "type": "config",
-            "app": "Goldwarden",
-            "path": ".config/goldwarden.json"
-        }
-    elif path.startswith(".config/evolution"):
-        return {
-            "type": "config",
-            "app": "Evolution",
-            "path": ".config/evolution/"
-        }
-    elif path.startswith(".ssh/"):
-        return {
-            "type": "config",
-            "app": "SSH",
-            "path": ".ssh/"
-        }
-    elif path.startswith(".gitconfig"):
-        return {
-            "type": "config",
-            "app": "Git",
-            "path": ".gitconfig"
-        }
-    elif path.startswith(".config/i3/config"):
-        return {
-            "type": "config",
-            "app": "i3",
-            "path": ".config/i3/"
-        }
-    elif path.startswith(".config/Code"):
-        return {
-            "type": "config",
-            "app": "VSCode",
-            "path": ".config/Code/"
-        }
-    
-    else:
-        return None
-
-def userdata_filter(path):
-    if "Documents" in path:
-        return {
-            "type": "userdata",
-            "app": "Documents",
-            "path": "Documents"
-        }
-    elif "Music" in path:
-        return {
-            "type": "userdata",
-            "app": "Music",
-            "path": "Music"
-        }
-    elif "Pictures" in path:
-        return {
-            "type": "userdata",
-            "app": "Pictures",
-            "path": "Pictures"
-        }
-    else:
-        return None
-
-filters = [flatpak_data_filter, config_filter, userdata_filter]
 
 def get_description(result):
     if result["type"] == "userdata":
-        return f'{len(result["files"])} Files'
+        return f'{result["files"]} Files - {humanize.naturalsize(result["filesize"])}'
     elif result["type"] == "flatpak":
         return f'{result["app"]}'
     elif result["type"] == "config":
         return f'{result["path"]}'
     else:
         return ""
+
+def process_files(data):
+    (files, data_from_path_function) = data
+    results = {}
+    for file in files:
+        result = data_from_path_function(file["path"])
+        if result is not None:
+            if result["app"] not in results:
+                result["files"] = []
+                result["filesize"] = 0
+                result["active"] = True
+                results[result["app"]] = result
+            result = results[result["app"]]
+            result["files"].append(file["path"])
+            result["filesize"] += file["size"]
+    return results
 
 class RestoreView(Gtk.Box):
     def __init__(self, backup_store, backup_executor, navigate_callback):
@@ -146,32 +135,79 @@ class RestoreView(Gtk.Box):
             "userdata": [],
             "flatpak": [],
             "config": [],
+            "total_filesize": 0,
+            "total_files": 0,
+            "mountpoint": snapshot["paths"][0]
         }
 
         cfg = self.backup_store.get_backup_config(config_id)
         self.id = cfg.settings.id
         print("getting files for snapshot")
-        files = restic.files_for_snapshot(cfg.settings.aws_s3_repository, cfg.settings.aws_s3_access_key, cfg.settings.aws_s3_secret_key, cfg.settings.repository_password, snapshot_id)
+        files = restic.files_for_snapshot(cfg.settings.get_restic_repo(), cfg.settings.s3_access_key, cfg.settings.s3_secret_key, cfg.settings.repository_password, snapshot_id)
         print("got files for snapshot")
 
-        print("analyzing files")
-        for file in files:
-            path = file["path"].replace(os.path.expanduser('~') + "/", "")
-            for f in filters:
-                result = f(path)
-                if result is not None:
-                    result_list = results[result["type"]]
-                    result["active"] = True
-                    if len(list(filter(lambda x: x["app"] == result["app"], result_list))) == 0:
-                        result["files"] = []
-                        if file["type"] == "file":
-                            result["files"].append(path)
-                        result_list.append(result)
-                    else:
-                        if file["type"] == "file":
-                            list(filter(lambda x: x["app"] == result["app"], result_list))[0]["files"].append(path)
-                    break
-        print("analyzed files")
+        # print("analyzing files")
+        pl_files = pl.DataFrame(files)
+        pl_files = pl_files.with_columns(pl.col("path").str.replace("/home/[a-zA-Z]*/", "").alias("relative_path")).filter(pl.col("type") == "file")
+        results["total_filesize"] = pl_files.select(pl.sum("size")).to_dict()["size"][0]
+        results["total_files"] = len(pl_files.to_dict()["path"])
+
+        flatpak_apps = pl_files.with_columns(pl.col("relative_path").str.starts_with(".var/app/").alias("is_flatpak")).filter(pl.col("is_flatpak") == True)
+        flatpak_apps = flatpak_apps.with_columns(pl.col("relative_path").str.split("/").apply(lambda x: x[2] if len(x) > 2 else None).alias("app")).filter(pl.col("type") == "file")
+        flatpak_apps = flatpak_apps.group_by(pl.col("app")).agg(pl.sum("size").alias("size"), pl.count("path").alias("files"))
+        flatpak_apps = flatpak_apps.with_columns((".var/app/" + pl.col("app") + "/").alias("app_path"))
+        # print(flatpak_apps)
+
+        userdata_table = pl.DataFrame(userdata_filter)
+        userdata_tables = pl.concat([pl_files.with_columns(app_type=pl.lit(f["type"]), app=pl.lit(f["app"]), app_path=pl.lit(f["path"]), icon=pl.lit(f["icon"])) for f in userdata_filter])
+        userdata_tables = userdata_tables.with_columns(pl.col("relative_path").str.starts_with(userdata_tables["app_path"]).alias("is_userdata")).filter(pl.col("is_userdata") == True).filter(pl.col("type") == "file")
+        number_of_userdata_files = len(userdata_tables.to_dict()["path"])
+        size_of_userdata_files = userdata_tables.select(pl.sum("size")).to_dict()["size"][0]
+        userdata_tables = userdata_tables.group_by(pl.col("app_type"), pl.col("app"), pl.col("app_path"), pl.col("icon")).agg(pl.sum("size").alias("size"), pl.count("path").alias("files"))
+        # print(userdata_tables)
+
+        config_table = pl.DataFrame(config_filter)
+        config_tables = pl.concat([pl_files.with_columns(app_type=pl.lit(f["type"]), app=pl.lit(f["app"]), app_path=pl.lit(f["path"]), icon=None) for f in config_filter])
+        config_tables = config_tables.with_columns(pl.col("relative_path").str.starts_with(config_tables["app_path"]).alias("is_config")).filter(pl.col("is_config") == True).filter(pl.col("type") == "file")
+        number_of_config_files = len(config_tables.to_dict()["path"])
+        size_of_config_files = config_tables.select(pl.sum("size")).to_dict()["size"][0]
+        config_tables = config_tables.group_by(pl.col("app_type"), pl.col("app"), pl.col("app_path")).agg(pl.sum("size").alias("size"), pl.count("path").alias("files"))
+        print(config_tables)
+
+        for row in userdata_tables.rows(named=True):
+            results["userdata"].append({
+                "type": row["app_type"],
+                "app": row["app"],
+                "path": row["app_path"],
+                "full_path": "/home/quexten/" + row["app_path"],
+                "icon": row["icon"],
+                "files": row["files"],
+                "filesize": row["size"],
+                "active": True
+            })
+        for row in config_tables.rows(named=True):
+            results["config"].append({
+                "type": row["app_type"],
+                "app": row["app"],
+                "path": row["app_path"],
+                "full_path": "/home/quexten/" + row["app_path"],
+                "icon": None,
+                "files": row["files"],
+                "filesize": row["size"],
+                "active": True
+            })
+        for row in flatpak_apps.rows(named=True):
+            results["flatpak"].append({
+                "type": "flatpak",
+                "app": row["app"],
+                "path": row["app"],
+                "full_path": "/home/quexten/.var/app/" + row["app"] + "/",
+                "icon": None,
+                "files": row["files"],
+                "filesize": row["size"],
+                "active": True
+            })
+
         GLib.idle_add(self.display_ui, snapshot_id, snapshot, results)
 
     def display_ui(self, snapshot_id, snapshot, results):
@@ -184,7 +220,7 @@ class RestoreView(Gtk.Box):
 
         self.title_group = Adw.PreferencesGroup()
         self.title_group.set_title(f'Snapshot - {snapshot_id}')
-        self.title_group.set_description(snapshot["time"].strftime("%Y-%m-%d %H:%M:%S"))
+        self.title_group.set_description(snapshot["time"].strftime("%Y-%m-%d %H:%M:%S") + " - " + str(results["total_files"]) + " Files - " + humanize.naturalsize(results["total_filesize"]))
         self.preferences_page.add(self.title_group)
 
         self.userdata_group = Adw.PreferencesGroup()
@@ -196,7 +232,7 @@ class RestoreView(Gtk.Box):
             row.set_title(result["app"])
             row.set_subtitle(get_description(result))
             row.set_active(True)
-            row.set_icon_name("folder-documents-symbolic")
+            row.set_icon_name(result["icon"])
             def on_change_userdata(row, value):
                 id = row.get_title()
                 value = row.get_active()
@@ -241,15 +277,55 @@ class RestoreView(Gtk.Box):
             row.connect("notify::active", lambda row, a: on_change(row, a))
             self.config_group.add(row)
 
-        self.button = Gtk.Button(label="Restore")
+        # self.other_group = Adw.PreferencesGroup()
+        # self.other_group.set_title("Other Files")
+        # self.preferences_page.add(self.other_group)
+
+        # row = Adw.SwitchRow()
+        # row.set_title("Other Files")
+        # row.set_subtitle("{} Files - {}".format(results["other"]["files"], humanize.naturalsize(results["other"]["filesize"])))
+        # row.set_active(False)
+        # row.set_sensitive(False)
+        # self.other_group.add(row)
+
+        self.button_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self.button_row.set_halign(Gtk.Align.CENTER)
+        self.button_row.set_valign(Gtk.Align.CENTER)
+        self.append(self.button_row)
+
+        self.button = Gtk.Button(label="Restore to Home")
         self.button.get_style_context().add_class("suggested-action")
-        self.button.connect("clicked", lambda _: self.restore(results, snapshot_id))
-        self.button.set_margin_start(160)
-        self.button.set_margin_end(160)
+        self.button.connect("clicked", lambda _: self.restore(results, snapshot_id, snapshot["paths"][0]))
+        # self.button.set_margin_start(160)
+        self.button.set_margin_top(10)
         self.button.set_margin_bottom(10)
-        self.append(self.button)
+        self.button_row.append(self.button)
+
+        self.restore_to_button = Gtk.Button(label="Restore to...")
+        def restore_to():
+            self.results = results
+            self.snapshot_id = snapshot_id
+            self.show_open_dialog(self.window)
+        self.restore_to_button.connect("clicked", lambda _: restore_to())
+        # self.button.set_margin_start(160)
+        self.restore_to_button.set_margin_top(10)
+        self.restore_to_button.set_margin_bottom(10)
+        self.button_row.append(self.restore_to_button)
+
+    
+    def show_open_dialog(self, window):
+        self.open_dialog = Gtk.FileChooserNative.new(title="Import Config", parent=window, action=Gtk.FileChooserAction.SELECT_FOLDER)
+        self.open_dialog.connect("response", self.open_response)
+        self.open_dialog.show()
+    
+    def open_response(self, dialog, response):
+        if response == Gtk.ResponseType.ACCEPT:
+            file = dialog.get_file()
+            filename = file.get_path()
+            self.restore(self.results, self.snapshot_id, self.results["mountpoint"], filename)
 
     def navigate_to(self, param, window):
+        self.window = window
         while self.get_first_child() is not None:
             self.remove(self.get_first_child())
         # add loading spinner
@@ -266,23 +342,22 @@ class RestoreView(Gtk.Box):
         self.loading_label.get_style_context().add_class("title-1")
         self.loading_box.append(self.loading_label)
 
-
         config_id, snapshot_id = param
 
         thread = threading.Thread(target=self.load, args=(config_id, snapshot_id))
         thread.start()
-     
 
-        
-    
-    def restore(self, results, snapshot):
+    def restore(self, results, snapshot, mountpoint, destination=None):
+        if destination is None:
+            destination = os.path.expanduser('~')
+
         paths = []
-        for key in results:
+        for key in ["userdata", "flatpak", "config"]:
             for result in results[key]:
                 if result["active"]:
-                    paths.append(os.path.expanduser('~') + "/" + result["path"])
+                    paths.append(result["path"])
         if len(paths) == 0:
             return
 
-        self.backup_executor.restore_now(self.id, snapshot, paths)
+        self.backup_executor.restore_now(self.id, snapshot, mountpoint, paths, [], destination)
         self.navigate_callback("main", None)

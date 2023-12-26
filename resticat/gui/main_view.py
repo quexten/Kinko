@@ -133,7 +133,8 @@ def create_backup_preview_box(backup_config, navigate_callback):
         if button == schedule_row:
             navigate_callback("schedule", backup_config.settings.id)
         if button == last_backup_row:
-            navigate_callback("history", backup_config.settings.id)
+            if backup_config.status.last_backup is not None:
+                navigate_callback("history", backup_config.settings.id)
 
     list.connect("row-activated", on_row_click)
 
@@ -150,7 +151,7 @@ def create_backup_preview_box(backup_config, navigate_callback):
     def update_gui():
         status = backup_config.status.status
         progress = backup_config.status.progress
-        running_title.set_text(backup_config.status.status_message)
+        running_title.set_text(backup_config.status.message)
         schedule_row.set_subtitle("Every 24 hours" if backup_config.schedule.backup_frequency == "daily" else "Every 7 days" if backup_config.schedule.backup_frequency == "weekly" else "Every hour")
         last_backup = backup_config.status.last_backup
         if last_backup is not None:
@@ -191,5 +192,5 @@ def create_backup_preview_box(backup_config, navigate_callback):
 
         if not list.destroyed:
             GObject.timeout_add(1000, update_gui)
-    GObject.timeout_add(1000, lambda: update_gui())
+    GObject.timeout_add(50, lambda: update_gui())
     return list

@@ -1,6 +1,7 @@
 class BackupStatus():
     def __init__(self):
         self.last_backup = None
+        self.last_refreshed = None
         self.status = "Idle"
         self.status_message = "Idle"
         self.progress = 0
@@ -29,12 +30,12 @@ class BackupSchedule():
         self.cleanup_keep_yearly = 0
 
 class BackupSettings():
-    def __init__(self, id, name, aws_s3_secret_key, aws_s3_access_key, aws_s3_repository, repository_password, sources):
+    def __init__(self, id, name, s3_secret_key, s3_access_key, s3_repository, repository_password, sources):
         self.id = id
         self.name = name
-        self.aws_s3_secret_key = aws_s3_secret_key
-        self.aws_s3_access_key = aws_s3_access_key
-        self.aws_s3_repository = aws_s3_repository
+        self.s3_secret_key = s3_secret_key
+        self.s3_access_key = s3_access_key
+        self.s3_repository = s3_repository
         self.repository_password = repository_password
         self.sources = sources
         self.ignores_cache = True
@@ -42,6 +43,9 @@ class BackupSettings():
         self.ignore_downloads = True
         self.ignore_videos = True
         self.ignore_vms = True
+    
+    def get_restic_repo(self):
+        return "s3:" + self.s3_repository
 
 class BackupConfig():
     def __init__(self, settings, status, schedule):

@@ -26,6 +26,7 @@ class StatusView(Gtk.Box):
         self.status_box.set_transition_duration(200)
         self.backup_config_view.append(self.status_box)
 
+        # idle
         self.status_idle_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.status_idle_list = Gtk.ListBox()
         self.status_idle_list.set_selection_mode(Gtk.SelectionMode.NONE)
@@ -40,7 +41,20 @@ class StatusView(Gtk.Box):
         self.status_running_list = Gtk.ListBox()
         self.status_running_list.set_selection_mode(Gtk.SelectionMode.NONE)
         self.status_running_list.get_style_context().add_class("boxed-list")
+
+        #running-cleanup
+        self.status_running_cleanup_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.status_listbox_running_cleanup = Gtk.ListBox()
+        self.status_listbox_running_cleanup.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.status_listbox_running_cleanup.get_style_context().add_class("boxed-list")
+        self.status_row_running_cleanup = Adw.ActionRow()
+        self.status_row_running_cleanup.set_title("Cleaning up...")
+        self.status_row_running_cleanup.set_subtitle("Cleaning up...")
+        self.status_listbox_running_cleanup.append(self.status_row_running_cleanup)
+        self.status_running_cleanup_box.append(self.status_listbox_running_cleanup)
+        self.status_box.add_named(self.status_running_cleanup_box, "running-cleanup")
         
+        #running
         self.status_box_running = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.status_box_running.set_margin_start(10)
         self.status_box_running.set_margin_end(10)
@@ -112,7 +126,7 @@ class StatusView(Gtk.Box):
         self.backup_config_view_delete_button = Gtk.Button(label="Delete Backup")
         self.backup_config_view_delete_button.get_style_context().add_class("destructive-action")
         self.backup_config_view_delete_button.get_style_context().add_class("pill")
-        self.backup_config_view_delete_button.connect("clicked", lambda _: b_store.remove_backup_config(self.selected_id) and config.save_all_configs() and self.switch_to_overview())
+        self.backup_config_view_delete_button.connect("clicked", lambda _: b_store.remove_backup_config(self.selected_id) and config.save_all_configs(self.b_store) and self.navigate_callback("main", None))
         self.action_box.append(self.backup_config_view_delete_button)
         self.backup_config_view.append(self.action_box)
 
@@ -121,7 +135,7 @@ class StatusView(Gtk.Box):
 
         def update_timer():
             if not self.destroyed:
-                GObject.timeout_add(1000, update_timer)
+                GObject.timeout_add(500, update_timer)
             
             if not "selected_id" in self.__dict__:
                 return
@@ -134,7 +148,10 @@ class StatusView(Gtk.Box):
                 self.status_box.set_visible_child_name("idle")
             elif backup_config.status.status == "Running" and self.last_status != "Running":
                 self.status_box.set_visible_child_name("running")
-                self.running_title.set_text(backup_config.status.message)
+                self.running_title.set_text("Backing up...")
+            elif backup_config.status.status == "Running-Cleanup" and self.last_status != "Running-Cleanup":
+                self.status_box.set_visible_child_name("running-cleanup")
+                self.running_title.set_text("Cleaning up...")
             elif backup_config.status.status == "Error" and self.last_status != "Error":
                 self.status_box.set_visible_child_name("error")
             self.last_status = backup_config.status.status
@@ -142,15 +159,15 @@ class StatusView(Gtk.Box):
 
             self.progress_bar.set_fraction(backup_config.status.progress)
             self.progress_bar.set_text(str(round(backup_config.status.progress * 100, 2))+ "%")
-            if "files" in backup_config.status.__dict__:
+            if "files" in backup_config.status.__dict__ and backup_config.status.files is not None:
                 self.files_progress.set_text("{}/{} files".format(int(round(backup_config.status.files, 1)), backup_config.status.max_files))
             else:
                 print("no files in status")
                 self.files_progress.set_text("0/0 files")
             self.data_progress.set_text("{}/{}".format(sizeof_fmt(backup_config.status.bytes_processed), sizeof_fmt(backup_config.status.bytes_total)))
-            current_file = backup_config.status.message
-            if len(current_file) > 70:
-                current_file = current_file[:70] + "..."
+            current_file = backup_config.status.status_message
+            if len(current_file) > 50:
+                current_file = current_file[:50] + "..."
             self.current_file_label.set_text(current_file)
             # self.current_file_label.set_text(current_file)
             if "seconds_remaining" in backup_config.status.__dict__:
@@ -168,9 +185,11 @@ class StatusView(Gtk.Box):
                 # set enabled
                 self.backup_config_view_back_button.set_sensitive(False)
                 self.backup_config_view_clean_button.set_sensitive(False)
+                self.backup_config_view_delete_button.set_sensitive(False)
             else:
                 self.backup_config_view_back_button.set_sensitive(True)
                 self.backup_config_view_clean_button.set_sensitive(True)
+                self.backup_config_view_delete_button.set_sensitive(True)
             
             if not backup_config.schedule.backup_schedule_enabled:
                 self.status_box_idle.set_subtitle("Scheduled Backup disabled")
@@ -180,7 +199,7 @@ class StatusView(Gtk.Box):
                 else:
                     next_backup_time = backup_config.status.last_backup + timedelta(hours=(1 if backup_config.schedule.backup_frequency == "hourly" else (24 if backup_config.schedule.backup_frequency == "daily" else 7 * 24)))
                     self.status_box_idle.set_subtitle("Upcoming Backup - {}".format(next_backup_time.strftime("%H:%M")))
-        GObject.timeout_add(1000, lambda: update_timer())
+        GObject.timeout_add(10, lambda: update_timer())
 
     def navigate_to(self, param, window):
         self.selected_id = param

@@ -64,7 +64,20 @@ class MainWindow(Gtk.ApplicationWindow):
 
         self.set_default_size(700, 700)
         self.set_title("Resticat")
+
         self.navigate("main", None)
+
+    
+    # def show_open_dialog(self, button):
+        # self.open_dialog.show()
+        # print("show")
+
+    # def open_response(self, dialog, response):
+        # print("response")
+    #     if response == Gtk.ResponseType.ACCEPT:
+    #         file = dialog.get_file()
+    #         filename = file.get_path()
+    #         print(filename)  # Here you could handle opening or saving the file
 
     def navigate(self, view, param):
         if view == "main":

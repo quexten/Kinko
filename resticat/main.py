@@ -23,7 +23,7 @@ power_monitor.start_monitor(be)
 network_monitor.start_monitor(be)
 
 try:
-    subprocess.Popen(["python3", "/app/bin/background.py"], start_new_session=True)
+    subprocess.Popen(["python3", "/app/bin/autostart.py"], start_new_session=True)
 except:
     pass
 

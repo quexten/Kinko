@@ -4,12 +4,27 @@ runtime-version: '45'
 sdk: org.gnome.Sdk
 command: main.py
 finish-args:
+  # backups over the network
   - --share=network
+
+  # required for gui
   - --socket=wayland
   - --socket=fallback-x11
-  - --talk-name=org.freedesktop.secrets
-  - --filesystem=home
   - --device=dri
+  - --share=ipc
+
+  # encrypted config stored in keyring
+  - --talk-name=org.freedesktop.secrets
+
+  # backup locations
+  - --filesystem=home
+  - --filesystem=~/.var/app
+  - --talk-name=org.gtk.vfs.*
+  - --filesystem=xdg-run/gvfs
+  - --filesystem=xdg-run/gvfsd
+  
+  # on battery detection
+  - --filesystem=/sys/class/power_supply:ro
 modules:
   - name: resticat
     buildsystem: simple
@@ -19,7 +34,7 @@ modules:
     build-commands:
       - bzip2 -d restic_0.16.2_linux_amd64.bz2
       - install -D restic_0.16.2_linux_amd64  /app/bin/restic
-      - pip3 install --prefix=/app timeago secretstorage pycryptodome chacha20
+      - pip3 install --prefix=/app timeago secretstorage pycryptodome chacha20 orjson polars humanize
       - install -D main.py /app/bin/main.py
       - install -D app.py /app/bin/app.py
       - install -D autostart.py /app/bin/autostart.py

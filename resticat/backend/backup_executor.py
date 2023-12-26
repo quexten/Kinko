@@ -3,6 +3,7 @@ import time
 import backend.restic as restic
 from datetime import datetime, timezone
 import os
+
 class BackupExecutor():
     def __init__(self, backup_store):
         self.backup_store = backup_store
@@ -42,9 +43,10 @@ class BackupExecutor():
         time.sleep(5)
         last_refreshed = datetime.fromtimestamp(0)
         while True:
-            if (datetime.now() - last_refreshed).total_seconds() > 15 * 60:
-               self.refresh_backups()
-               last_refreshed = datetime.now()
+            for backup_config in self.backup_store.get_backup_configs():
+                if backup_config.status.last_refreshed == None or (datetime.now() - backup_config.status.last_refreshed).total_seconds() > 60:
+                    self.refresh_backups()
+                    break
             
             # check network changed time
             if self.network_status_last_changed != None and (datetime.now() - self.network_status_last_changed).total_seconds() > 5:
@@ -77,7 +79,7 @@ class BackupExecutor():
     def refresh_backups(self):
         for backup_config in self.backup_store.get_backup_configs():
             try:
-                snapshots = restic.snapshots(backup_config.settings.aws_s3_repository, backup_config.settings.aws_s3_access_key, backup_config.settings.aws_s3_secret_key, backup_config.settings.repository_password)
+                snapshots = restic.snapshots(backup_config.settings.get_restic_repo(), backup_config.settings.s3_access_key, backup_config.settings.s3_secret_key, backup_config.settings.repository_password)
                 if len(snapshots) > 0:
                     backup_config.status.last_backup = datetime.fromisoformat(snapshots[-1].get("time"))
                 else:
@@ -87,15 +89,16 @@ class BackupExecutor():
                     snapshot["time"] = datetime.fromisoformat(snapshot.get("time"))
 
                 backup_config.status.backups = snapshots
+                backup_config.status.last_refreshed = datetime.now()
             except Exception as e:
                 print("Error getting snapshots", e)
         self.backup_store.notify_update()
 
-    def restore_now(self, id, snapshot_id, files):
-        thread = threading.Thread(target=self.run_restore, args=(id, snapshot_id, files))
+    def restore_now(self, id, snapshot_id, mountpoint, include, exclude, destination):
+        thread = threading.Thread(target=self.run_restore, args=(id, snapshot_id, mountpoint, include, exclude, destination))
         thread.start()
 
-    def run_restore(self, id, snapshot_id, files):
+    def run_restore(self, id, snapshot_id, mountpoint, include, exclude, destination):
         backup_config = self.backup_store.get_backup_config(id)
         if backup_config is None:
             return False
@@ -137,7 +140,7 @@ class BackupExecutor():
                 self.backup_store.notify_update()
 
         try:
-            restic.restore(backup_config.settings.aws_s3_repository, backup_config.settings.aws_s3_access_key, backup_config.settings.aws_s3_secret_key, backup_config.settings.repository_password, snapshot_id, files, on_progress=on_progress)
+            restic.restore(backup_config.settings.get_restic_repo(), backup_config.settings.s3_access_key, backup_config.settings.s3_secret_key, backup_config.settings.repository_password, snapshot_id, mountpoint, include, exclude, destination, on_progress=on_progress)
         except Exception as e:
             backup_config.status.status = "Error"
             backup_config.status.message = "Restore failed"
@@ -156,15 +159,17 @@ class BackupExecutor():
         backup_config = self.backup_store.get_backup_config(id)
         if backup_config is None:
             return []
-        snapshots = restic.snapshots(backup_config.settings.aws_s3_repository, backup_config.settings.aws_s3_access_key, backup_config.settings.aws_s3_secret_key, backup_config.settings.repository_password)
+        snapshots = restic.snapshots(backup_config.settings.get_restic_repo(), backup_config.settings.s3_access_key, backup_config.settings.s3_secret_key, backup_config.settings.repository_password)
         return snapshots
     
     def run_clean(self, id):
         for backup_config in self.backup_store.get_backup_configs():
             if backup_config.settings.id == id:
                 backup_config.status.status = "Running-Cleanup"
+                backup_config.status.message = "Cleaning up"
+                backup_config.status.status_message = "Cleaning up"
                 try:
-                    res = restic.forget(backup_config.settings.aws_s3_repository, backup_config.settings.aws_s3_access_key, backup_config.settings.aws_s3_secret_key, backup_config.settings.repository_password, int(backup_config.schedule.cleanup_keep_hourly), int(backup_config.schedule.cleanup_keep_daily), int(backup_config.schedule.cleanup_keep_weekly), int(backup_config.schedule.cleanup_keep_monthly), int(backup_config.schedule.cleanup_keep_yearly))
+                    res = restic.forget(backup_config.settings.get_restic_repo(), backup_config.settings.s3_access_key, backup_config.settings.s3_secret_key, backup_config.settings.repository_password, int(backup_config.schedule.cleanup_keep_hourly), int(backup_config.schedule.cleanup_keep_daily), int(backup_config.schedule.cleanup_keep_weekly), int(backup_config.schedule.cleanup_keep_monthly), int(backup_config.schedule.cleanup_keep_yearly))
                     print(res)
                 except Exception as e:
                     print("error cleaning up", e)
@@ -194,10 +199,12 @@ class BackupExecutor():
 
         def on_progress(status):
             if status.get("message_type") == "status":
-                backup_config.status.status_message = "Backing up..."
+                backup_config.status.message = "Backing up..."
                 backup_config.status.progress = status.get("percent_done")
                 if status.get("current_files") is not None and len(status.get("current_files")) > 0:
-                    backup_config.status.message = "" + status.get("current_files")[0]
+                    backup_config.status.status_message = "" + status.get("current_files")[0]
+                else:
+                    backup_config.status.status_message = "Backing up..."
                 backup_config.status.files = status.get("files_done")
                 backup_config.status.max_files = status.get("total_files")
                 backup_config.status.bytes_processed = status.get("bytes_done")
@@ -260,7 +267,7 @@ class BackupExecutor():
             ignores.append(".local/share/containers/")
 
         try:
-            restic.backup(backup_config.settings.aws_s3_repository, backup_config.settings.aws_s3_access_key, backup_config.settings.aws_s3_secret_key, backup_config.settings.repository_password, backup_config.settings.sources[0].replace("~", os.path.expanduser('~')) , ignores, on_progress=on_progress)
+            restic.backup(backup_config.settings.get_restic_repo(), backup_config.settings.s3_access_key, backup_config.settings.s3_secret_key, backup_config.settings.repository_password, backup_config.settings.sources[0].replace("~", os.path.expanduser('~')) , ignores, on_progress=on_progress)
             backup_config.status.status = "Idle"
             backup_config.status.message = "Backup complete"
             backup_config.status.status_message = "Idle"

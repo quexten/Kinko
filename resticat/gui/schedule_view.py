@@ -77,6 +77,8 @@ class ScheduleView(Gtk.Box):
                 backup_store.get_backup_config(self.selected_id).schedule.backup_frequency = "daily"
             elif selected == 2:
                 backup_store.get_backup_config(self.selected_id).schedule.backup_frequency = "weekly"
+            backup_schedule = self.backup_store.get_backup_config(self.selected_id).schedule
+            self.backup_schedule_view_preferences_backup_frequency_row.set_subtitle("Every 24 hours" if backup_schedule.backup_frequency == "daily" else "Every 7 days" if backup_schedule.backup_frequency == "weekly" else "Every hour")
         self.backup_schedule_view_preferences_backup_frequency_row.connect("notify::selected", on_backup_frequency_changed)
 
 
@@ -182,4 +184,6 @@ class ScheduleView(Gtk.Box):
         self.backup_schedule_view_cleanup_keep_weekly_row.set_value(backup_schedule.cleanup_keep_weekly)
         self.backup_schedule_view_cleanup_keep_monthly_row.set_value(backup_schedule.cleanup_keep_monthly)
         self.backup_schedule_view_cleanup_keep_yearly_row.set_value(backup_schedule.cleanup_keep_yearly)
+        self.backup_schedule_view_preferences_backup_frequency_row.set_subtitle("Every 24 hours" if backup_schedule.backup_frequency == "daily" else "Every 7 days" if backup_schedule.backup_frequency == "weekly" else "Every hour")
+
     

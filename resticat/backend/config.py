@@ -12,9 +12,9 @@ def config_to_json(config):
     config_dict["settings"] = {
         "id": config.settings.id,
         "name": config.settings.name,
-        "aws_s3_secret_key": config.settings.aws_s3_secret_key,
-        "aws_s3_access_key": config.settings.aws_s3_access_key,
-        "aws_s3_repository": config.settings.aws_s3_repository,
+        "s3_secret_key": config.settings.s3_secret_key,
+        "s3_access_key": config.settings.s3_access_key,
+        "s3_repository": config.settings.s3_repository,
         "repository_password": config.settings.repository_password,
         "sources": config.settings.sources,
         "ignores_cache": config.settings.ignores_cache,
@@ -45,7 +45,7 @@ def config_to_json(config):
 
 def save_all_configs(backup_store):
     # if config dir does not exist, create
-    Path(GLib.get_user_data_dir()+"/resticat/").mkdir(parents=True, exist_ok=True)
+    Path(GLib.get_user_config_dir()+"/resticat/").mkdir(parents=True, exist_ok=True)
 
     encrypted_configs = []
     for backup_config in backup_store.get_backup_configs():
@@ -53,12 +53,13 @@ def save_all_configs(backup_store):
         encrypted_config = encrypt_string(config, get_application_encryption_key())
         encrypted_configs.append(encrypted_config)
     encrypted_configs = "\n".join(encrypted_configs)
-    with open(GLib.get_user_data_dir() + "/resticat/config", "w") as f:
+    with open(GLib.get_user_config_dir() + "/resticat/config", "w") as f:
         f.write(encrypted_configs)
 
 def read_all_configs():
+    print(GLib.get_user_config_dir() + "/resticat/config")
     try:
-        with open(GLib.get_user_data_dir() + "/resticat/config", "r") as f:
+        with open(GLib.get_user_config_dir() + "/resticat/config", "r") as f:
             encrypted_configs = f.read()
         encrypted_configs = encrypted_configs.split("\n")
         configs = []
@@ -78,9 +79,9 @@ def json_to_config(json_cfg):
     backup_settings = backup_store.BackupSettings(
         config_dict["settings"]["id"],
         config_dict["settings"]["name"],
-        config_dict["settings"]["aws_s3_secret_key"],
-        config_dict["settings"]["aws_s3_access_key"],
-        config_dict["settings"]["aws_s3_repository"],
+        config_dict["settings"]["s3_secret_key"],
+        config_dict["settings"]["s3_access_key"],
+        config_dict["settings"]["s3_repository"],
         config_dict["settings"]["repository_password"],
         config_dict["settings"]["sources"],
     )
