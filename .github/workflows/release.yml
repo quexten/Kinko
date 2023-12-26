@@ -21,3 +21,8 @@ jobs:
         bundle: resticat.flatpak
         manifest-path: com.quexten.Resticat.yml
         cache-key: flatpak-builder- github.sha 
+    - uses: JasonEtco/upload-to-release@master
+      with:
+        args: resticat.flatpak
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
