@@ -1,9 +1,16 @@
 # Resticat - A GTK4 & Restic based backup tool
 
-**WARNING** This is still very early in development, as it was hacked together as a prototype in a weekend. Don't expect to use it yet.
+Resticat is GTK4/Adwaita based Linux-desktop backup tool. 
+As the underlying backend, restic is used. 
+For now, just S3 remotes (AWS/Wasabi/Backblaze b2) are supported, but rclone and file support are planned.
 
-Resticat is a graphical frontend for restic. It supports creating scheduled 
-restic backups, and triggering backups on other events (connecting to power, connecting to a *metered*/*unmetered* network).
+When restoring, resticat automatically detects application configurations, and user files, and lets users toggle these separately.
+It backups run on a schedule and triggering on other events like connecting to power, connecting to a *metered*/*unmetered* network is also possible.
+
+## Installation
+Download the flatpak from the releases page and run it.
+
+## Screenshots
 ### Overview
 <img src='https://github.com/quexten/resticat/assets/11866552/816aa854-4931-466c-bd66-e070c2e30f82' width='400'>
 
