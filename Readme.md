@@ -1,4 +1,4 @@
-# Resticat - A GTK4 based restic gui
+# Resticat - A GTK4 & Restic based backup tool
 
 **WARNING** This is still very early in development, as it was hacked together as a prototype in a weekend. Don't expect to use it yet.
 
