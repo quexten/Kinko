@@ -21,3 +21,7 @@ Download the flatpak from the releases page and run it.
 <img src='https://github.com/quexten/resticat/assets/11866552/8eecb912-43ea-4b00-804e-504e1a9e4f56' width='400'>
 <img src='https://github.com/quexten/resticat/assets/11866552/c0aa4234-6ebf-4b57-8f85-08a7858aa91b' width='400'>
 
+## Alternative Software
+Also check out the awesome (and much more mature) Pika Backup:
+https://flathub.org/apps/org.gnome.World.PikaBackup
+The main advantage of Resticat is flexibility in backup targets due to restic (and rclone) support.
