@@ -1,7 +1,7 @@
-# Resticat - A GTK4 & Restic based backup tool
+# Resticat - Simple Desktop Backups
 
-Resticat is GTK4/Adwaita based Linux-desktop backup tool. 
-As the underlying backend, restic is used. 
+Resticat is simple backup tool for the Linux-desktop. 
+As the underlying backend, restic is used.  For the ui, GTK4/Adwaita is used.
 For now, just S3 remotes (AWS/Wasabi/Backblaze b2) are supported, but rclone and file support are planned.
 
 When restoring, resticat automatically detects application configurations, and user files, and lets users toggle these separately.
