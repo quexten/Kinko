@@ -169,7 +169,7 @@ def restore(repository, access_key_id, secret_access_key, password, snapshot_id,
     return result
 
 def prune(repository, access_key_id, secret_access_key, password):
-    restic_cmd = launch_command + f"restic prune -r {repository}"
+    restic_cmd = f"{launch_command} {restic_path} prune -r {repository} --tag com.quexten.resticat"
     env = os.environ.copy()
     env["CACHE_DIR"] = GLib.get_user_cache_dir() + "/resticat"
     env["RESTIC_PASSWORD"] = password
@@ -178,6 +178,18 @@ def prune(repository, access_key_id, secret_access_key, password):
     result = subprocess.run(restic_cmd.split(), env=env, capture_output=True, text=True)
     if result.returncode != 0:
         raise Exception("Failed to prune repository, err", result.stderr)
+    return result.stdout
+
+def unlock(repository, access_key_id, secret_access_key, password):
+    restic_cmd = f"{launch_command} {restic_path} unlock -r {repository}"
+    env = os.environ.copy()
+    env["CACHE_DIR"] = GLib.get_user_cache_dir() + "/resticat"
+    env["RESTIC_PASSWORD"] = password
+    env["AWS_ACCESS_KEY_ID"] = access_key_id
+    env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
+    result = subprocess.run(restic_cmd.split(), env=env, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise Exception("Failed to unlock repository, err", result.stderr)
     return result.stdout
 
 def check(repository, access_key_id, secret_access_key, password):

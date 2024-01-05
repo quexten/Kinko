@@ -230,7 +230,7 @@ class EditView(Gtk.Box):
 def on_add_backup_win_add_button_clicked(self, b_store):
     id = self.add_backup_win_id_row.get_subtitle()
     name = self.add_backup_win_name_row.get_text()
-    s3_secrhet_key = self.add_backup_win_s3_secret_key_row.get_text()
+    s3_secret_key = self.add_backup_win_s3_secret_key_row.get_text()
     s3_access_key = self.add_backup_win_s3_access_key_row.get_text()
     s3_repo = self.add_backup_win_s3_repository_row.get_text()
     repo_password = self.add_backup_win_repository_password.get_text()

@@ -38,9 +38,11 @@ modules:
       - install -D main.py /app/bin/main.py
       - install -D app.py /app/bin/app.py
       - install -D autostart.py /app/bin/autostart.py
-
+      - install -D ipc.py /app/bin/ipc.py
       - install -D com.quexten.Resticat.desktop /app/share/applications/com.quexten.Resticat.desktop
       - install -D resticat.svg /app/share/icons/hicolor/scalable/apps/com.quexten.Resticat.svg
+      - install -D components.py /app/bin/components.py
+      - install -D style.css /app/bin/style.css
       - cp -R gui/ /app/bin/gui/
       - cp -R backend/ /app/bin/backend/
       - cp -R event_monitors/ /app/bin/event_monitors/

@@ -60,7 +60,7 @@ class BackupExecutor():
 
             # check schedules
             for backup_config in self.backup_store.get_backup_configs():
-                if backup_config.status.status == "Running":
+                if backup_config.status.status != "Idle":
                     continue
                 if backup_config.schedule.backup_schedule_enabled and backup_config.status.last_backup != None:
                     if backup_config.schedule.backup_frequency == "hourly":
@@ -148,6 +148,10 @@ class BackupExecutor():
             print("error running restore", e)
             return False
 
+        backup_config.status.status = "Idle"
+        backup_config.status.message = "Restore complete"
+        backup_config.status.status_message = "Idle"
+
         print("Restore complete")
         return True
 
@@ -169,8 +173,15 @@ class BackupExecutor():
                 backup_config.status.message = "Cleaning up"
                 backup_config.status.status_message = "Cleaning up"
                 try:
+                    backup_config.status.message = "Unlocking repository"
+                    backup_config.status.status_message = "Unlocking repository"
+                    restic.unlock(backup_config.settings.get_restic_repo(), backup_config.settings.s3_access_key, backup_config.settings.s3_secret_key, backup_config.settings.repository_password)
+                    backup_config.status.message = "Doing cleanup"
+                    backup_config.status.status_message = "Doing cleanup"
                     res = restic.forget(backup_config.settings.get_restic_repo(), backup_config.settings.s3_access_key, backup_config.settings.s3_secret_key, backup_config.settings.repository_password, int(backup_config.schedule.cleanup_keep_hourly), int(backup_config.schedule.cleanup_keep_daily), int(backup_config.schedule.cleanup_keep_weekly), int(backup_config.schedule.cleanup_keep_monthly), int(backup_config.schedule.cleanup_keep_yearly))
-                    print(res)
+                    backup_config.status.message = "Refreshing backups"
+                    backup_config.status.status_message = "Refreshing backups"
+                    self.refresh_backups()
                 except Exception as e:
                     print("error cleaning up", e)
                     backup_config.status.status = "Error"
@@ -185,6 +196,10 @@ class BackupExecutor():
         backup_config = self.backup_store.get_backup_config(id)
         if backup_config is None:
             return False
+
+        if backup_config.status.status != "Idle":
+            return False
+
         backup_config.status.status = "Running"
         backup_config.status.progress = 0
         backup_config.status.message = "Starting backup"

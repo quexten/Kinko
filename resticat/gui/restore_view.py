@@ -3,9 +3,8 @@ from backend import restic
 import os
 import threading
 import humanize
-from multiprocessing import Pool
-import time
 import polars as pl
+import components
 
 userdata_filter = [
     {
@@ -166,20 +165,18 @@ class RestoreView(Gtk.Box):
         userdata_tables = userdata_tables.group_by(pl.col("app_type"), pl.col("app"), pl.col("app_path"), pl.col("icon")).agg(pl.sum("size").alias("size"), pl.count("path").alias("files"))
         # print(userdata_tables)
 
-        config_table = pl.DataFrame(config_filter)
         config_tables = pl.concat([pl_files.with_columns(app_type=pl.lit(f["type"]), app=pl.lit(f["app"]), app_path=pl.lit(f["path"]), icon=None) for f in config_filter])
         config_tables = config_tables.with_columns(pl.col("relative_path").str.starts_with(config_tables["app_path"]).alias("is_config")).filter(pl.col("is_config") == True).filter(pl.col("type") == "file")
         number_of_config_files = len(config_tables.to_dict()["path"])
         size_of_config_files = config_tables.select(pl.sum("size")).to_dict()["size"][0]
         config_tables = config_tables.group_by(pl.col("app_type"), pl.col("app"), pl.col("app_path")).agg(pl.sum("size").alias("size"), pl.count("path").alias("files"))
-        print(config_tables)
 
         for row in userdata_tables.rows(named=True):
             results["userdata"].append({
                 "type": row["app_type"],
                 "app": row["app"],
                 "path": row["app_path"],
-                "full_path": "/home/quexten/" + row["app_path"],
+                "full_path": "/" + row["app_path"],
                 "icon": row["icon"],
                 "files": row["files"],
                 "filesize": row["size"],
@@ -190,7 +187,7 @@ class RestoreView(Gtk.Box):
                 "type": row["app_type"],
                 "app": row["app"],
                 "path": row["app_path"],
-                "full_path": "/home/quexten/" + row["app_path"],
+                "full_path": "/" + row["app_path"],
                 "icon": None,
                 "files": row["files"],
                 "filesize": row["size"],
@@ -200,13 +197,17 @@ class RestoreView(Gtk.Box):
             results["flatpak"].append({
                 "type": "flatpak",
                 "app": row["app"],
-                "path": row["app"],
-                "full_path": "/home/quexten/.var/app/" + row["app"] + "/",
+                "path": "~/.var/app/" + row["app"] + "/",
+                "full_path": "/" + ".var/app/" + row["app"] + "/",
                 "icon": None,
                 "files": row["files"],
                 "filesize": row["size"],
                 "active": True
             })
+
+        userdata_tables = None
+        config_tables = None
+        flatpak_apps = None
 
         GLib.idle_add(self.display_ui, snapshot_id, snapshot, results)
 
@@ -223,6 +224,10 @@ class RestoreView(Gtk.Box):
         self.title_group.set_description(snapshot["time"].strftime("%Y-%m-%d %H:%M:%S") + " - " + str(results["total_files"]) + " Files - " + humanize.naturalsize(results["total_filesize"]))
         self.preferences_page.add(self.title_group)
 
+        self.title_icon = components.StatusIcon()
+        self.title_icon.set_icon("view-restore-symbolic", "primary")
+        self.title_group.set_header_suffix(self.title_icon)
+
         self.userdata_group = Adw.PreferencesGroup()
         self.userdata_group.set_title("User Data")
         self.preferences_page.add(self.userdata_group)
@@ -236,7 +241,7 @@ class RestoreView(Gtk.Box):
             def on_change_userdata(row, value):
                 id = row.get_title()
                 value = row.get_active()
-                result["active"] = value
+                list(filter(lambda x: x["app"] == id, results["userdata"]))[0]["active"] = value
             row.connect("notify::active", lambda row, a: on_change_userdata(row, a))
             self.userdata_group.add(row)
 
@@ -276,17 +281,6 @@ class RestoreView(Gtk.Box):
                 list(filter(lambda x: x["app"] == id, results["config"]))[0]["active"] = value
             row.connect("notify::active", lambda row, a: on_change(row, a))
             self.config_group.add(row)
-
-        # self.other_group = Adw.PreferencesGroup()
-        # self.other_group.set_title("Other Files")
-        # self.preferences_page.add(self.other_group)
-
-        # row = Adw.SwitchRow()
-        # row.set_title("Other Files")
-        # row.set_subtitle("{} Files - {}".format(results["other"]["files"], humanize.naturalsize(results["other"]["filesize"])))
-        # row.set_active(False)
-        # row.set_sensitive(False)
-        # self.other_group.add(row)
 
         self.button_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.button_row.set_halign(Gtk.Align.CENTER)
@@ -355,7 +349,7 @@ class RestoreView(Gtk.Box):
         for key in ["userdata", "flatpak", "config"]:
             for result in results[key]:
                 if result["active"]:
-                    paths.append(result["path"])
+                    paths.append(result["full_path"])
         if len(paths) == 0:
             return
 

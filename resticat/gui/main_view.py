@@ -1,13 +1,15 @@
 from gi.repository import Gtk, Adw, GObject
 from datetime import datetime, timezone, timedelta
 import timeago
+import ipc
+import components
 
 class MainView(Gtk.Box):
-    def __init__(self, backup_store, navigate_callback):
+    def __init__(self, b, navigate_callback):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.set_margin_start(80)
         self.set_margin_end(80)
-        self.backup_store = backup_store
+        self.backup_store = b
         self.navigate_callback = navigate_callback
         self.number_of_rendered_children = 0
         GObject.timeout_add(100, lambda: self.tick())
@@ -77,6 +79,17 @@ def create_backup_preview_box(backup_config, navigate_callback):
     status_box_idle.append(status_box_idle_description_label)
     status_box.add_named(status_box_idle, "idle")
 
+    status_box_running_cleanup = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+    status_box_running_cleanup.set_margin_start(10)
+    status_box_running_cleanup.set_margin_end(10)
+    status_box_running_cleanup.set_margin_top(10)
+    status_box_running_cleanup.set_margin_bottom(10)
+    running_cleanup_title = Gtk.Label(label="Cleaning up...")
+    running_cleanup_title.set_markup("<b>Cleaning up...</b>")
+    running_cleanup_title.set_halign(Gtk.Align.START)
+    status_box_running_cleanup.append(running_cleanup_title)
+    status_box.add_named(status_box_running_cleanup, "running-cleanup")
+
     status_box_running = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
     status_box_running.set_margin_start(10)
     status_box_running.set_margin_end(10)
@@ -102,7 +115,7 @@ def create_backup_preview_box(backup_config, navigate_callback):
 
     error_box = Adw.ActionRow()
     error_box.set_title("Error")
-    error_box.set_subtitle("Failed to backup")
+    error_box.set_subtitle("An error occured")
     error_box.set_activatable(True)
     error_box.set_icon_name("dialog-error-symbolic")
     status_box.add_named(error_box, "error")
@@ -115,7 +128,9 @@ def create_backup_preview_box(backup_config, navigate_callback):
         last_backup_row.set_subtitle(timeago.format(last_backup, datetime.now(timezone.utc)))
     else:
         last_backup_row.set_subtitle("Never")
-    last_backup_row.set_icon_name("emblem-default-symbolic")
+    last_backup_icon = components.StatusIcon()
+    last_backup_icon.set_icon("emblem-default-symbolic", "ok")
+    last_backup_row.add_prefix(last_backup_icon)
     list.append(last_backup_row)
 
     schedule_row = Adw.ActionRow()
@@ -162,6 +177,8 @@ def create_backup_preview_box(backup_config, navigate_callback):
             last_backup_row.set_subtitle("Never")
         if status == "Idle" and list.last_status != "Idle":
             status_box.set_visible_child_name("idle")
+        if status == "Running-Cleanup" and list.last_status != "Running-Cleanup":
+            status_box.set_visible_child_name("running-cleanup")
         if status == "Running" and list.last_status != "Running":
             status_box.set_visible_child_name("running")
         if status == "Error" and list.last_status != "Error":

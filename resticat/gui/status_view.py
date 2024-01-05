@@ -53,6 +53,18 @@ class StatusView(Gtk.Box):
         self.status_listbox_running_cleanup.append(self.status_row_running_cleanup)
         self.status_running_cleanup_box.append(self.status_listbox_running_cleanup)
         self.status_box.add_named(self.status_running_cleanup_box, "running-cleanup")
+
+        #running-restore
+        self.status_running_restore_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.status_listbox_running_restore = Gtk.ListBox()
+        self.status_listbox_running_restore.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.status_listbox_running_restore.get_style_context().add_class("boxed-list")
+        self.status_row_running_restore = Adw.ActionRow()
+        self.status_row_running_restore.set_title("Restoring...")
+        self.status_row_running_restore.set_subtitle("Restoring...")
+        self.status_listbox_running_restore.append(self.status_row_running_restore)
+        self.status_running_restore_box.append(self.status_listbox_running_restore)
+        self.status_box.add_named(self.status_running_restore_box, "running-restore")
         
         #running
         self.status_box_running = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
@@ -97,7 +109,7 @@ class StatusView(Gtk.Box):
 
         self.error_box = Adw.ActionRow()
         self.error_box.set_title("Error")
-        self.error_box.set_subtitle("Failed to backup")
+        self.error_box.set_subtitle("An error occured")
         self.error_box.set_activatable(True)
         self.error_box.set_icon_name("dialog-error-symbolic")
         self.status_box.add_named(self.error_box, "error")
@@ -149,6 +161,9 @@ class StatusView(Gtk.Box):
             elif backup_config.status.status == "Running" and self.last_status != "Running":
                 self.status_box.set_visible_child_name("running")
                 self.running_title.set_text("Backing up...")
+            elif backup_config.status.status == "Running-Restore" and self.last_status != "Running-Restore":
+                self.status_box.set_visible_child_name("running")
+                self.running_title.set_text("Restoring...")
             elif backup_config.status.status == "Running-Cleanup" and self.last_status != "Running-Cleanup":
                 self.status_box.set_visible_child_name("running-cleanup")
                 self.running_title.set_text("Cleaning up...")
@@ -164,11 +179,16 @@ class StatusView(Gtk.Box):
             else:
                 print("no files in status")
                 self.files_progress.set_text("0/0 files")
-            self.data_progress.set_text("{}/{}".format(sizeof_fmt(backup_config.status.bytes_processed), sizeof_fmt(backup_config.status.bytes_total)))
+            if "bytes_processed" in backup_config.status.__dict__ and backup_config.status.bytes_processed is not None:
+                self.data_progress.set_text("{}/{}".format(sizeof_fmt(backup_config.status.bytes_processed), sizeof_fmt(backup_config.status.bytes_total)))
+            
             current_file = backup_config.status.status_message
-            if len(current_file) > 50:
-                current_file = current_file[:50] + "..."
-            self.current_file_label.set_text(current_file)
+            try:
+                if len(current_file) > 50:
+                    current_file = current_file[:50] + "..."
+                self.current_file_label.set_text(current_file)
+            except:
+                pass
             # self.current_file_label.set_text(current_file)
             if "seconds_remaining" in backup_config.status.__dict__:
                 if backup_config.status.seconds_remaining is not None:

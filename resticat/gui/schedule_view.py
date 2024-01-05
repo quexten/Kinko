@@ -185,5 +185,3 @@ class ScheduleView(Gtk.Box):
         self.backup_schedule_view_cleanup_keep_monthly_row.set_value(backup_schedule.cleanup_keep_monthly)
         self.backup_schedule_view_cleanup_keep_yearly_row.set_value(backup_schedule.cleanup_keep_yearly)
         self.backup_schedule_view_preferences_backup_frequency_row.set_subtitle("Every 24 hours" if backup_schedule.backup_frequency == "daily" else "Every 7 days" if backup_schedule.backup_frequency == "weekly" else "Every hour")
-
-    

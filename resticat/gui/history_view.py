@@ -1,4 +1,5 @@
 from gi.repository import Gtk, Adw, Gio, GObject
+import components
 
 class BackupEntry(GObject.Object):
   __gtype_name__ = 'BackupEntry'
@@ -56,10 +57,13 @@ class HistoryView(Gtk.Box):
         row = Adw.ActionRow()
         row.set_title("Backup")
         row.set_subtitle("Id")
-        row.set_icon_name("emblem-default-symbolic")
+        icon = components.StatusIcon()
+        icon.set_icon("view-restore-symbolic", "primary")
+        row.add_prefix(icon)
         row.set_activatable(True)
         label = Gtk.Label()
         label.set_text("Backup")
+        label.get_style_context().add_class("primary-label")
         row.add_suffix(label)
         row.label = label
         list_item.set_child(row)

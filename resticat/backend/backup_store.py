@@ -1,3 +1,5 @@
+import json 
+
 class BackupStatus():
     def __init__(self):
         self.last_backup = None

@@ -8,9 +8,11 @@ from gui.schedule_view import ScheduleView
 from gui.status_view import StatusView
 from gui.restore_view import RestoreView
 from gui.edit_view import EditView
-from gi.repository import Gtk, Adw
+from gi.repository import Gtk, Adw, Gdk
 import sys
 from gui.main_view import MainView
+import ipc
+import os
 
 class MainWindow(Gtk.ApplicationWindow):
     def __init__(self, *args, **kwargs):
@@ -20,6 +22,8 @@ class MainWindow(Gtk.ApplicationWindow):
         self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
         self.set_child(self.stack)
     
+        b = ipc.ProxyBackupStore()
+        be = ipc.ProxyBackupExecutor()
         self.main_view = MainView(b, self.navigate)
         self.main_view_scrolled = Gtk.ScrolledWindow()
         self.main_view_scrolled.set_vexpand(True)
@@ -108,21 +112,19 @@ class MyApp(Adw.Application):
         self.connect('activate', self.on_activate)
 
     def on_activate(self, app):
-        if hasattr(self, "win") is False:
-            app.hold()
-            self.win = MainWindow(application=app)
-            self.win.set_hide_on_close(True)
-        
-        if s:
-            self.win.hide()
-        else:
-            self.win.present()
+        self.win = MainWindow(application=app)
+        self.win.present()
 
-def run(backup_store, backup_executor, silent):
-    global b, be, s
-    b = backup_store
-    be = backup_executor
-    s = silent
-    silent = silent
-    app = MyApp(application_id="com.quexten.Resticat")
-    app.run(sys.argv)
+isflatpak = os.path.exists("/.flatpak-info")
+pathprefix = "/app/bin/" if isflatpak else "./"
+print("path", pathprefix+"style.css")
+css_provider = Gtk.CssProvider()
+css_provider.load_from_path(pathprefix+"style.css")
+Gtk.StyleContext.add_provider_for_display(
+    Gdk.Display.get_default(),
+    css_provider,
+    Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+)
+
+app = MyApp(application_id="com.quexten.Resticat")
+app.run(sys.argv)
