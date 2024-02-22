@@ -2,7 +2,7 @@
 Name=Kinko
 Comment=Protect your files
 Keywords=backup;recovery;
-Exec=main.py
+Exec=kinko_daemon.py
 Terminal=false
 Type=Application
 Icon=com.quexten.Kinko.svg
