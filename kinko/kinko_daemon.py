@@ -35,11 +35,6 @@ def daemonize():
     print("waiting for ipc...")
     ipc.daemonize(b, be)
 
-
-if "daemonize" in sys.argv:
-    daemonize()
-    os._exit(0)
-
 is_flatpak = os.path.exists("/.flatpak-info")
 if is_flatpak:
     print("Running in flatpak, registering with background portal for autostart.")
@@ -52,6 +47,7 @@ is_thread = True
 try:
     conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     conn.connect(os.path.expanduser("~") + "/.kinko.sock")
+    is_thread = False
 except:
     if os.path.exists(os.path.expanduser("~") + "/.kinko.sock"):
         os.remove(os.path.expanduser("~") + "/.kinko.sock")
