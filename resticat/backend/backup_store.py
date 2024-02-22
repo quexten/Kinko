@@ -19,17 +19,17 @@ class BackupStatus():
 class BackupSchedule():
     def __init__(self):
         self.allow_on_metered = True
-        self.on_network = False
-        self.on_ac = True
+        self.allow_on_battery = True
+        self.allow_on_powersaver = True
         self.backup_schedule_enabled = True
         self.backup_frequency = "hourly"
         self.cleanup_schedule_enabled = True
         self.cleanup_frequency = "daily"
-        self.cleanup_keep_hourly = 2
-        self.cleanup_keep_daily = 1
-        self.cleanup_keep_weekly = 0
-        self.cleanup_keep_monthly = 0
-        self.cleanup_keep_yearly = 0
+        self.cleanup_keep_hourly = 12
+        self.cleanup_keep_daily = 7
+        self.cleanup_keep_weekly = 4
+        self.cleanup_keep_monthly = 6
+        self.cleanup_keep_yearly = 5
 
 class BackupSettings():
     def __init__(self, id, name, s3_secret_key, s3_access_key, s3_repository, repository_password, sources):

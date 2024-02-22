@@ -3,6 +3,7 @@ gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import GLib, Gio
 from random import randint
+import sys
 
 def receive_autostart(self, *args):
     print("autostart enabled..!?")
@@ -22,10 +23,10 @@ def request_autostart():
 
     token = 0 + randint(10000000, 20000000)
     options = {
-        'handle_token': GLib.Variant('s', f'com/quexten/Resticat/{token}'),
-        'reason': GLib.Variant('s', ('Autostart Resticat in the background.')),
+        'handle_token': GLib.Variant('s', f'com/quexten/Kinko/{token}'),
+        'reason': GLib.Variant('s', ('Autostart Kinko in the background.')),
         'autostart': GLib.Variant('b', True),
-        'commandline': GLib.Variant('as', ['main.py', '--hidden']),
+        'commandline': GLib.Variant('as', ['kinko_daemon.py', '--hidden']),
         'dbus-activatable': GLib.Variant('b', False),
     }
 

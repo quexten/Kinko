@@ -1,14 +1,17 @@
 import threading
 import time
 import backend.restic as restic
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import os
+import timeago
 
 class BackupExecutor():
     def __init__(self, backup_store):
         self.backup_store = backup_store
-        self.network_status = "unmetered"
-        self.network_status_last_changed = None
+        self.network_status = "metered"
+        self.network_status_changed = False
+        self.power_status = "unplugged"
+        self.power_saver_enabled = False
         self.thread = threading.Thread(target=self.run, args=())
         self.thread.daemon = True
         self.thread.start()
@@ -16,28 +19,59 @@ class BackupExecutor():
     def notify(self, event):
         if event == "power_on":
             print("plugged in, running backups...")
-            for backup_config in self.backup_store.get_backup_configs():
-                if backup_config.status.status == "Running":
-                    continue
-                if backup_config.schedule.on_ac:
-                    self.backup_now(backup_config.settings.id)
+            self.power_status = "plugged"
+        if event == "power_off":
+            print("unplugged, running backups...")
+            self.power_status = "unplugged"
         if event == "network_connected_metered":
             if self.network_status == "metered":
                 return
             self.network_status = "metered"
-            self.network_status_last_changed = datetime.now()
+            self.network_status_changed = True
             print("connected to metered network, running backups...")
         if event == "network_connected_unmetered":
             if self.network_status == "unmetered":
                 return
             self.network_status = "unmetered"
-            self.network_status_last_changed = datetime.now()
+            self.network_status_changed = True
             print("connected to unmetered network, running backups...")
         if event == "network_disconnected":
             if self.network_status == "disconnected":
                 return
             self.network_status = "disconnected"
-            self.network_status_last_changed = datetime.now()
+            self.network_status_changed = True
+        if event == "power_profile_low":
+            self.power_saver_enabled = True
+        if event == "power_profile_high":
+            self.power_saver_enabled = False
+
+    def get_next_backup_time(self, id):
+        backup_config = self.backup_store.get_backup_config(id)
+        if backup_config is None:
+            return None
+
+        time = None
+        if backup_config.schedule.backup_schedule_enabled and backup_config.status.last_backup != None:
+            if backup_config.schedule.backup_frequency == "hourly":
+                time = backup_config.status.last_backup + timedelta(hours=1)
+            if backup_config.schedule.backup_frequency == "daily":
+                time = backup_config.status.last_backup + timedelta(days=1)
+            if backup_config.schedule.backup_frequency == "weekly":
+                time = backup_config.status.last_backup + timedelta(weeks=1)
+        if time == None:
+            return None
+
+        # if in past, check battery and network
+        if time < datetime.now(timezone.utc):
+            if not backup_config.schedule.allow_on_battery and self.power_status == "unplugged":
+                return "battery"
+            if not backup_config.schedule.allow_on_metered and self.network_status == "metered":
+                return "metered"
+            if not backup_config.schedule.allow_on_powersaver and self.power_saver_enabled:
+                return "powersaver"
+            return "now"
+
+        return timeago.format(time, datetime.now(timezone.utc))
 
     def run(self):
         time.sleep(5)
@@ -45,34 +79,30 @@ class BackupExecutor():
         while True:
             for backup_config in self.backup_store.get_backup_configs():
                 if backup_config.status.last_refreshed == None or (datetime.now() - backup_config.status.last_refreshed).total_seconds() > 60:
+                    print("refreshing backups")
                     self.refresh_backups()
                     break
-            
+
             # check network changed time
-            if self.network_status_last_changed != None and (datetime.now() - self.network_status_last_changed).total_seconds() > 5:
-                self.network_status_last_changed = None
-                for backup_config in self.backup_store.get_backup_configs():
-                    if backup_config.status.status == "Running":
-                        continue
-                    if backup_config.schedule.backup_schedule_enabled and backup_config.schedule.on_network:
-                        if backup_config.schedule.allow_on_metered or self.network_status == "unmetered":
-                            self.backup_now(backup_config.settings.id)
+            # if self.network_status_changed:
+            #     self.network_status_changed = False
+            #     for backup_config in self.backup_store.get_backup_configs():
+            #         if backup_config.status.status == "Running":
+            #             continue
+            #         if backup_config.schedule.backup_schedule_enabled and backup_config.schedule.on_network:
+            #             if backup_config.schedule.allow_on_metered or self.network_status == "unmetered":
+            #                 if backup_config.schedule.allow_on_battery or self.power_status == "plugged":
+            #                     if backup_config.schedule.allow_on_powersaver or not self.power_saver_enabled:
+            #                         self.backup_now(backup_config.settings.id)
 
             # check schedules
             for backup_config in self.backup_store.get_backup_configs():
                 if backup_config.status.status != "Idle":
                     continue
-                if backup_config.schedule.backup_schedule_enabled and backup_config.status.last_backup != None:
-                    if backup_config.schedule.backup_frequency == "hourly":
-                        if (datetime.now(timezone.utc) - backup_config.status.last_backup).total_seconds() > 60 * 60:
-                            self.backup_now(backup_config.settings.id)
-                    if backup_config.schedule.backup_frequency == "daily":
-                        if (datetime.now(timezone.utc) - backup_config.status.last_backup).total_seconds() > 60 * 60 * 24:
-                            self.backup_now(backup_config.settings.id)
-                    if backup_config.schedule.backup_frequency == "weekly":
-                        if (datetime.now(timezone.utc) - backup_config.status.last_backup).total_seconds() > 60 * 60 * 24 * 7:
-                            self.backup_now(backup_config.settings.id)
-                if backup_config.schedule.cleanup_schedule_enabled and backup_config.status.last_backup == None:
+
+                next_backup = self.get_next_backup_time(backup_config.settings.id)
+                if next_backup == "now":
+                    print("now")
                     self.backup_now(backup_config.settings.id)
             time.sleep(5)
 

@@ -1,0 +1,51 @@
+{
+    "name": "python3-package-installation",
+    "buildsystem": "simple",
+    "build-commands": [
+        "pip3 install --verbose --exists-action=i --no-index --find-links=\"file://${PWD}\" --prefix=${FLATPAK_DEST} --no-build-isolation orjson timeago humanize polars"
+    ],
+    "sources": [
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/46/a8/74f8bf12c7d93bb2e111d13bae198996032d9a53dbbfc3bf4837a466cbe9/humanize-3.13.1-py3-none-any.whl",
+            "sha256": "a6f7cc1597db69a4e571ad5e19b4da07ee871da5a9de2b233dbfab02d98e9754"
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/42/5b/d4e30811886f009424c08e5ca56a4b23ef536333163e02ddbff6dc3a9a9d/orjson-3.9.10-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl",
+            "sha256": "ed8bc367f725dfc5cabeed1ae079d00369900231fbb5a5280cf0736c30e2adf7",
+            "only-arches": [
+                "aarch64"
+            ]
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/5a/23/42d1db93fd31ee9fea79c448ddb511fa574f6f281d3bdfa9e2c7d943296a/orjson-3.9.10-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+            "sha256": "1d0dc4310da8b5f6415949bd5ef937e60aeb0eb6b16f95041b5e43e6200821fb",
+            "only-arches": [
+                "x86_64"
+            ]
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/60/18/8aa3e011139ae9e9e84bb77f15a55c92e06912043a136009ebfadee3798e/polars-0.20.3-cp38-abi3-manylinux_2_24_aarch64.whl",
+            "sha256": "dc685edd2d8742c71ffb238c2c25c17354631ddcfc8e9a105aaf9c228c1a0eb3",
+            "only-arches": [
+                "aarch64"
+            ]
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/57/e9/087c26c4228dccb87d1c349188dd14269e9cd9006f91c10230d553f148fe/polars-0.20.3-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+            "sha256": "c89848562e3176d0e7bc517d1761c6fb5a9fca57ca2950cb58d3d001958dc285",
+            "only-arches": [
+                "x86_64"
+            ]
+        },
+        {
+            "type": "file",
+            "url": "https://files.pythonhosted.org/packages/5f/88/8dac5496354650972434966ba570a4a824fafed43471cf190faea4b085fc/timeago-1.0.16-py3-none-any.whl",
+            "sha256": "9b8cb2e3102b329f35a04aa4531982d867b093b19481cfbb1dac7845fa2f79b0"
+        }
+    ]
+}

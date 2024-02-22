@@ -1,10 +1,10 @@
 [Desktop Entry]
-Name=Resticat
-Comment=A backup tool
+Name=Kinko
+Comment=Protect your files
 Keywords=backup;recovery;
 Exec=main.py
 Terminal=false
 Type=Application
-Icon=com.quexten.Resticat.svg
+Icon=com.quexten.Kinko.svg
 StartupNotify=true
 Categories=GNOME;GTK;Backup;

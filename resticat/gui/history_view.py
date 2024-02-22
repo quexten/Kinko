@@ -89,7 +89,7 @@ class HistoryView(Gtk.Box):
 
         backups = reversed(self.backup_store.get_backup_config(self.selected_id).status.backups)
         backups = list(backups)
-        backups = filter(lambda x: ("tags" in x) and ("com.quexten.resticat" in x.get("tags")), backups)
+        backups = filter(lambda x: ("tags" in x) and ("com.quexten.kinko" in x.get("tags")), backups)
 
         for backup in backups:
             self.filter_model.append(BackupEntry(backup.get("time").strftime("%Y-%m-%d %H:%M:%S"), backup.get("short_id"), backup.get("hostname")))

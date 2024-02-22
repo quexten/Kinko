@@ -12,6 +12,12 @@ import time
 import threading
 import socket
 
+def glib_main():
+    print("GLib main loop started")
+    from gi.repository import GLib, Gio
+    m = GLib.MainLoop()
+    m.run()
+
 def daemonize():
     # load config
     b = backup_store.BackupStore()
@@ -24,6 +30,8 @@ def daemonize():
     be = backup_executor.BackupExecutor(b)
     power_monitor.start_monitor(be)
     network_monitor.start_monitor(be)
+    thread = threading.Thread(target=glib_main)
+    thread.start()
     print("waiting for ipc...")
     ipc.daemonize(b, be)
 
@@ -32,18 +40,21 @@ if "daemonize" in sys.argv:
     daemonize()
     os._exit(0)
 
-try:
-    subprocess.Popen(["python3", "/app/bin/autostart.py"], start_new_session=True)
-except:
-    pass
+is_flatpak = os.path.exists("/.flatpak-info")
+if is_flatpak:
+    print("Running in flatpak, registering with background portal for autostart.")
+    try:
+        subprocess.Popen(["python3", "/app/bin/autostart.py"], start_new_session=True)
+    except:
+        pass
 
-is_thread = False
+is_thread = True
 try:
     conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    conn.connect(os.path.expanduser("~") + "/.resticat.sock")
+    conn.connect(os.path.expanduser("~") + "/.kinko.sock")
 except:
-    if os.path.exists(os.path.expanduser("~") + "/.resticat.sock"):
-        os.remove(os.path.expanduser("~") + "/.resticat.sock")
+    if os.path.exists(os.path.expanduser("~") + "/.kinko.sock"):
+        os.remove(os.path.expanduser("~") + "/.kinko.sock")
     print("Starting daemon thread...")
     thread = threading.Thread(target=daemonize)
     thread.start()
@@ -52,9 +63,10 @@ time.sleep(1)
 
 is_silent = "--silent" in sys.argv
 if not is_silent:
-    if os.path.exists("/app/bin/app.py"):
-        subprocess.Popen(["python3", "/app/bin/app.py"])
+    if os.path.exists("/app/bin/kinko_ui.py"):
+        subprocess.Popen(["python3", "/app/bin/kinko_ui.py"])
 
 if is_thread:
+    print("Waiting for daemon thread...")
     while True:
         time.sleep(1)

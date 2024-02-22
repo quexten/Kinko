@@ -1,12 +1,13 @@
 import os
 import socket
 import pickle
+import time
 
 is_flatpak = os.path.exists("/.flatpak-info")
 print("is flatpak: " + str(is_flatpak))
-socket_path = "/tmp/resticat.sock"
+socket_path = "/tmp/kinko.sock"
 if is_flatpak:
-    socket_path = os.path.expanduser("~") + "/.resticat.sock"
+    socket_path = os.path.expanduser("~") + "/.kinko.sock"
 
 class ProxyBackupStore():
     def __init__(self):
@@ -40,6 +41,9 @@ class ProxyBackupExecutor():
     def clean_now(self, backup_config_id):
         return send_command("executor.clean_now", backup_config_id)
 
+    def get_next_backup_time(self, backup_config_id):
+        return send_command("executor.get_next_backup_time", backup_config_id)
+
 
 def send_command(action, data):
     conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -53,8 +57,14 @@ def send_command(action, data):
     response_bytes = conn.recv(4)
     response_length = int.from_bytes(response_bytes, byteorder="big")
     response = conn.recv(response_length)
-    response = pickle.loads(response)
-    return response
+
+    try:
+        response = pickle.loads(response)
+        return response
+    except:
+        time.sleep(0.05)
+        # print("ipc error, retrying...")
+        return send_command(action, data)
 
 def handle_command(action, data, backup_store, backup_executor):
     response = {}
@@ -82,6 +92,8 @@ def handle_command(action, data, backup_store, backup_executor):
     elif action == "executor.clean_now":
         backup_executor.clean_now(data)
         response = None
+    elif action == "executor.get_next_backup_time":
+        response = backup_executor.get_next_backup_time(data)
     return response
 
 def daemonize(backup_store, backup_executor):

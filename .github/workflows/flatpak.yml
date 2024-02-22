@@ -15,6 +15,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
-          bundle: resticat.flatpak
-          manifest-path: com.quexten.Resticat.yml
+          bundle: kinko.flatpak
+          manifest-path: com.quexten.Kinko.yml
           cache-key: flatpak-builder- github.sha 

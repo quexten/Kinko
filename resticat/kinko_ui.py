@@ -4,7 +4,7 @@ gi.require_version('Adw', '1')
 
 from gui.edit_view import EditView
 from gui.history_view import HistoryView
-from gui.schedule_view import ScheduleView
+from gui.schedule_view import BackupConfigView
 from gui.status_view import StatusView
 from gui.restore_view import RestoreView
 from gui.edit_view import EditView
@@ -13,6 +13,7 @@ import sys
 from gui.main_view import MainView
 import ipc
 import os
+import time
 
 class MainWindow(Gtk.ApplicationWindow):
     def __init__(self, *args, **kwargs):
@@ -24,7 +25,7 @@ class MainWindow(Gtk.ApplicationWindow):
     
         b = ipc.ProxyBackupStore()
         be = ipc.ProxyBackupExecutor()
-        self.main_view = MainView(b, self.navigate)
+        self.main_view = MainView(b, be, self.navigate)
         self.main_view_scrolled = Gtk.ScrolledWindow()
         self.main_view_scrolled.set_vexpand(True)
         self.main_view_scrolled.set_hexpand(False)
@@ -38,7 +39,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.history_view_scrolled.set_child(self.history_view)
         self.stack.add_named(self.history_view_scrolled, "history")
 
-        self.schedule_view = ScheduleView(b, self.navigate)
+        self.schedule_view = BackupConfigView(b, self.navigate)
         self.schedule_view_scrolled = Gtk.ScrolledWindow()
         self.schedule_view_scrolled.set_vexpand(True)
         self.schedule_view_scrolled.set_hexpand(False)
@@ -67,7 +68,7 @@ class MainWindow(Gtk.ApplicationWindow):
         self.stack.add_named(self.edit_view_scrolled, "edit")
 
         self.set_default_size(700, 700)
-        self.set_title("Resticat")
+        self.set_title("Kinko")
 
         self.navigate("main", None)
 
@@ -106,6 +107,7 @@ class MainWindow(Gtk.ApplicationWindow):
             self.restore_view.navigate_to(param, self)
         else:
             raise Exception("Unknown view")
+
 class MyApp(Adw.Application):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -126,5 +128,7 @@ Gtk.StyleContext.add_provider_for_display(
     Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
 )
 
-app = MyApp(application_id="com.quexten.Resticat")
+app = MyApp(application_id="com.quexten.Kinko")
 app.run(sys.argv)
+
+time.sleep(10)

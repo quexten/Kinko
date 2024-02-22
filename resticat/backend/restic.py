@@ -23,7 +23,7 @@ def init(repository, access_key_id, secret_access_key, password):
 def check_repo_status(repository, access_key_id, secret_access_key, password):
     restic_cmd = f"{launch_command} {restic_path} snapshots --json -r {repository}"
     env = os.environ.copy()
-    env["RESTIC_CACHE_DIR"] = GLib.get_user_cache_dir() + "/resticat"
+    env["RESTIC_CACHE_DIR"] = GLib.get_user_cache_dir() + "/kinko"
     env["RESTIC_PASSWORD"] = password
     env["AWS_ACCESS_KEY_ID"] = access_key_id
     env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
@@ -40,9 +40,9 @@ def check_repo_status(repository, access_key_id, secret_access_key, password):
 
 def backup(repository, access_key_id, secret_access_key, password, source, ignores, on_progress=None):
     ignores_string = " --exclude " + " --exclude ".join(ignores)
-    restic_cmd = f'{launch_command} {restic_path}  -r {repository} backup --compression auto --exclude-caches --tag com.quexten.resticat --one-file-system --exclude-larger-than 128M ' + ignores_string + f' --json {source}'
+    restic_cmd = f'{launch_command} {restic_path}  -r {repository} backup --compression auto --exclude-caches --tag com.quexten.kinko --one-file-system --exclude-larger-than 128M ' + ignores_string + f' --json {source}'
     env = os.environ.copy()
-    env["RESTIC_CACHE_DIR"] = GLib.get_user_cache_dir() + "/resticat"
+    env["RESTIC_CACHE_DIR"] = GLib.get_user_cache_dir() + "/kinko"
     env["RESTIC_PASSWORD"] = password
     env["AWS_ACCESS_KEY_ID"] = access_key_id
     env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
@@ -75,7 +75,7 @@ def backup(repository, access_key_id, secret_access_key, password, source, ignor
 def snapshots(repository, access_key_id, secret_access_key, password):
     restic_cmd = f"{launch_command} {restic_path} snapshots --json -r {repository}"
     env = os.environ.copy()
-    env["RESTIC_CACHE_DIR"] = GLib.get_user_cache_dir() + "/resticat"
+    env["RESTIC_CACHE_DIR"] = GLib.get_user_cache_dir() + "/kinko"
     env["RESTIC_PASSWORD"] = password
     env["AWS_ACCESS_KEY_ID"] = access_key_id
     env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
@@ -87,7 +87,7 @@ def snapshots(repository, access_key_id, secret_access_key, password):
 def files_for_snapshot(repository, access_key_id, secret_access_key, password, snapshot_id):
     restic_cmd = f"{launch_command} {restic_path} ls --json -r {repository} {snapshot_id}"
     env = os.environ.copy()
-    env["CACHE_DIR"] = GLib.get_user_cache_dir() + "/resticat"
+    env["CACHE_DIR"] = GLib.get_user_cache_dir() + "/kinko"
     env["RESTIC_PASSWORD"] = password
     env["AWS_ACCESS_KEY_ID"] = access_key_id
     env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
@@ -107,7 +107,7 @@ def files_for_snapshot(repository, access_key_id, secret_access_key, password, s
 def stats(repository, access_key_id, secret_access_key, password):
     restic_cmd = launch_command + f"restic stats --json -r {repository}"
     env = os.environ.copy()
-    env["CACHE_DIR"] = GLib.get_user_cache_dir() + "/resticat"
+    env["CACHE_DIR"] = GLib.get_user_cache_dir() + "/kinko"
     env["RESTIC_PASSWORD"] = password
     env["AWS_ACCESS_KEY_ID"] = access_key_id
     env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
@@ -117,7 +117,7 @@ def stats(repository, access_key_id, secret_access_key, password):
     return json.loads(result.stdout)
 
 def forget(repository, access_key_id, secret_access_key, password, keep_hourly, keep_daily, keep_weekly, keep_monthly, keep_yearly):
-    restic_cmd = f"{launch_command} {restic_path} forget -r {repository} --tag com.quexten.resticat --keep-hourly {keep_hourly} --keep-daily {keep_daily} --keep-weekly {keep_weekly} --keep-monthly {keep_monthly} --keep-yearly {keep_yearly}"
+    restic_cmd = f"{launch_command} {restic_path} forget -r {repository} --tag com.quexten.kinko --keep-hourly {keep_hourly} --keep-daily {keep_daily} --keep-weekly {keep_weekly} --keep-monthly {keep_monthly} --keep-yearly {keep_yearly}"
     env = os.environ.copy()
     env["RESTIC_PASSWORD"] = password 
     env["AWS_ACCESS_KEY_ID"] = access_key_id
@@ -136,9 +136,9 @@ def restore(repository, access_key_id, secret_access_key, password, snapshot_id,
     files_string = "--include " + " --include ".join(includes)
     if len(includes) == 0:
         files_string = ""
-    restic_cmd = f"{launch_command} {restic_path} restore --tag com.quexten.resticat -r {repository} {files_string} {snapshot_id}:{mountpoint} --json --target {destination}"
+    restic_cmd = f"{launch_command} {restic_path} restore --tag com.quexten.kinko -r {repository} {files_string} {snapshot_id}:{mountpoint} --json --target {destination}"
     env = os.environ.copy()
-    env["CACHE_DIR"] = GLib.get_user_cache_dir() + "/resticat"
+    env["CACHE_DIR"] = GLib.get_user_cache_dir() + "/kinko"
     env["RESTIC_PASSWORD"] = password
     env["AWS_ACCESS_KEY_ID"] = access_key_id
     env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
@@ -169,9 +169,9 @@ def restore(repository, access_key_id, secret_access_key, password, snapshot_id,
     return result
 
 def prune(repository, access_key_id, secret_access_key, password):
-    restic_cmd = f"{launch_command} {restic_path} prune -r {repository} --tag com.quexten.resticat"
+    restic_cmd = f"{launch_command} {restic_path} prune -r {repository} --tag com.quexten.kinko"
     env = os.environ.copy()
-    env["CACHE_DIR"] = GLib.get_user_cache_dir() + "/resticat"
+    env["CACHE_DIR"] = GLib.get_user_cache_dir() + "/kinko"
     env["RESTIC_PASSWORD"] = password
     env["AWS_ACCESS_KEY_ID"] = access_key_id
     env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
@@ -183,7 +183,7 @@ def prune(repository, access_key_id, secret_access_key, password):
 def unlock(repository, access_key_id, secret_access_key, password):
     restic_cmd = f"{launch_command} {restic_path} unlock -r {repository}"
     env = os.environ.copy()
-    env["CACHE_DIR"] = GLib.get_user_cache_dir() + "/resticat"
+    env["CACHE_DIR"] = GLib.get_user_cache_dir() + "/kinko"
     env["RESTIC_PASSWORD"] = password
     env["AWS_ACCESS_KEY_ID"] = access_key_id
     env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
@@ -195,7 +195,7 @@ def unlock(repository, access_key_id, secret_access_key, password):
 def check(repository, access_key_id, secret_access_key, password):
     restic_cmd = f"{launch_command} {restic_path} check --json -r {repository}"
     env = os.environ.copy()
-    env["CACHE_DIR"] = GLib.get_user_cache_dir() + "/resticat"
+    env["CACHE_DIR"] = GLib.get_user_cache_dir() + "/kinko"
     env["RESTIC_PASSWORD"] = password
     env["AWS_ACCESS_KEY_ID"] = access_key_id
     env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
