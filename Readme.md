@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/quexten/Kinko/main/kinko/kinko.svg" width=200>
+
 # Kinko - Simple Desktop Backups
 
 Kinko is simple backup tool for the Linux-desktop. 
