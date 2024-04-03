@@ -1,0 +1,155 @@
+using Gtk 4.0;
+using Adw 1;
+
+Adw.ToolbarView view {
+  content:  ScrolledWindow {
+    vexpand: true;
+    hexpand: true;
+    child: Box edit_content {
+      orientation: vertical;
+      spacing: 6;
+      margin-start: 80;
+      margin-end: 80;
+      
+      Adw.PreferencesGroup {
+        title: 'General';
+        margin-top: 12;
+
+        Adw.ActionRow id_row {
+          title: 'ID';
+          subtitle: '';
+          sensitive: false;
+        }
+
+        Adw.EntryRow name_row {
+          title: 'Name';
+          text: '';
+        }
+      }
+
+      Adw.PreferencesGroup {
+        margin-top: 20;
+        title: "Remote";
+        
+        Adw.ActionRow rclone_row {
+          title: "Custom Rclone Remote";
+          subtitle: "Backend provided via rclone integration";
+          icon-name: "folder-remote-symbolic";
+          sensitive: true;
+          activatable: true;
+        }
+
+        Adw.EntryRow rclone_path_row {
+          title: "Path within the remote";
+          text: "";
+        }
+
+      }
+
+      Adw.PreferencesGroup {
+        margin-top: 20;
+        title: "Repository";
+        
+        Adw.PasswordEntryRow password_row {
+          title: "Repository password";
+        }
+      }
+
+      Adw.PreferencesGroup {
+        margin-top: 20;
+        title: "Source";
+        description: "The source to back up";
+        
+        Adw.SwitchRow { 
+          title: "Home";
+          subtitle: "Backup the home directory";
+          active: true;
+          sensitive: false;
+          icon-name: "user-home-symbolic";
+        }
+      }
+
+      Adw.PreferencesGroup {
+        margin-top: 20;
+        title: "Exclude";
+        description: "Exclude files from backup";
+
+        Adw.SwitchRow exclude_caches_row {
+          title: "Exclude Caches";
+          subtitle: "Cache files in ~/.cache, node_modules, etc.";
+          active: true;
+          sensitive: false;
+          icon-name: "folder-symbolic";
+        }
+
+        Adw.SwitchRow exclude_logs_row {
+          title: "Trash";
+          subtitle: "Trash files in ~/.local/share/Trash";
+          active: true;
+          sensitive: false;
+          icon-name: "user-trash-symbolic";
+        }
+
+        Adw.SwitchRow exclude_downloads_row {
+          title: "Downloads";
+          active: true;
+          sensitive: false;
+          icon-name: "folder-download-symbolic";
+        }
+
+        Adw.SwitchRow exclude_videos_row {
+          title: "Video Files";
+          subtitle: "mp4, mkv, avi, etc.";
+          active: true;
+          sensitive: false;
+          icon-name: "folder-videos-symbolic";
+        }
+
+        Adw.SwitchRow exclude_vm_images_row {
+          title: "VM Images";
+          subtitle: "qcow2, vdi, etc.";
+          active: true;
+          sensitive: false;
+          icon-name: "computer-symbolic";
+        }
+        
+        Gtk.Button save_button {
+          margin-top: 20;
+          label: "Save";
+          styles [
+            "suggested-action"
+          ]
+        }
+
+        Gtk.Button remove_button {
+          label: "Remove";
+          margin-top: 8;
+          styles [
+            "destructive-action"
+          ]
+          sensitive: false;
+        }
+      }
+
+    };
+  };
+
+  [top]
+  Adw.HeaderBar {
+    halign: baseline;
+
+    title-widget: Adw.WindowTitle {
+      title: 'Edit view';
+    };
+
+    valign: start;
+
+    Button back_button {
+      label: 'Back';
+
+      styles [
+        "suggested-action",
+      ]
+    }
+  }
+}

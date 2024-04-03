@@ -1,0 +1,58 @@
+using Gtk 4.0;
+using Adw 1;
+
+Adw.Dialog dialog {
+  content-width: 400;
+  content-height: 300;
+  child: Box content {
+    orientation: vertical;
+    spacing: 6;
+    margin-start: 6;
+    margin-end: 6;
+    margin-top: 6;
+    margin-bottom: 6;
+    Label {
+      label: "Enter rclone config";
+      // title font
+      styles [
+          "title-3"
+      ]
+    }
+    Label {
+        label: "Use rclone to configure your remote, and paste the config here.";
+        // subtitle font
+        styles [
+            "caption"
+        ]
+    }
+    TextView config_textview {
+      hexpand: true;
+      vexpand: true;
+      editable: true;
+    }
+    Box {
+      orientation: horizontal;
+      halign: center;
+      hexpand: true;
+      margin-top: 2;
+      margin-bottom: 2;
+      Button cancel_button {
+        label: "Cancel";
+        action-name: "cancel";
+        sensitive: true;
+        margin-end: 6;
+        styles [
+            "destructive-action"
+        ]
+      }
+      Button save_button {
+        label: "Verify & Save";
+        action-name: "verify & save";
+        sensitive: true;
+        styles [
+            "suggested-action"
+        ]
+      }
+    }
+  };
+}

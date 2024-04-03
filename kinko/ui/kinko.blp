@@ -1,0 +1,21 @@
+using Gtk 4.0;
+using Adw 1;
+
+Adw.Window window {
+  default-width: 1000;
+  default-height: 400;
+
+  content: Stack main_stack {
+    StackPage {
+      child: Box main_content {
+      };
+      name: 'main_view';
+    }
+
+    StackPage {
+      child: Box edit_content {
+      };
+      name: 'edit_view';
+    }
+  };
+}

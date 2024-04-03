@@ -1,8 +1,7 @@
 #!/usr/bin/python
 import backend.backup_store as backup_store
 import backend.backup_executor as backup_executor
-import event_monitors.power_monitor as power_monitor
-import event_monitors.network_monitor as network_monitor
+from event_monitors.system_status import SystemStatus
 import backend.config as config
 import sys
 import ipc
@@ -19,17 +18,18 @@ def glib_main():
     m.run()
 
 def daemonize():
+    system_status = SystemStatus()
+    system_status.start_monitors()
+
     # load config
     b = backup_store.BackupStore()
     configs = config.read_all_configs()
 
     for cfg in configs:
-        b.add_backup_config(cfg)
+        b.upsert_backup_config(cfg)
 
     # start event monitors & backup executor
-    be = backup_executor.BackupExecutor(b)
-    power_monitor.start_monitor(be)
-    network_monitor.start_monitor(be)
+    be = backup_executor.BackupExecutor(b, system_status)
     thread = threading.Thread(target=glib_main)
     thread.start()
     print("waiting for ipc...")
@@ -48,7 +48,9 @@ try:
     conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     conn.connect(os.path.expanduser("~") + "/.kinko.sock")
     is_thread = False
+    print("Daemon already running, exiting...")
 except:
+    print("Daemon not running, starting...")
     if os.path.exists(os.path.expanduser("~") + "/.kinko.sock"):
         os.remove(os.path.expanduser("~") + "/.kinko.sock")
     print("Starting daemon thread...")

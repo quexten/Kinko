@@ -3,31 +3,37 @@ import orjson as json
 import os
 from gi.repository import GLib
 import time
+import backend.remotes as remotes
+from shutil import which
 
-launch_command = "ionice -c2 nice -n19"
-restic_path = "/usr/bin/restic"
-# if not exists change to /app/bin/restic
-if not os.path.exists(restic_path):
-    restic_path = "/app/bin/restic"
+launch_command = ["ionice", "-c2", "nice", "-n19"]
+restic_path = which("restic")
 
-def init(repository, access_key_id, secret_access_key, password):
-    restic_cmd = f"{launch_command} {restic_path} init --json -r {repository}"
+def get_restic_base(remote, password):
+    repo, parameters = remote.get_restic_parameters()
     env = os.environ.copy()
     env["RESTIC_PASSWORD"] = password
-    env["AWS_ACCESS_KEY_ID"] = access_key_id
-    env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
-    result = subprocess.run(restic_cmd.split(), env=env, capture_output=True, text=True)
+    env["RESTIC_CACHE_DIR"] = GLib.get_user_cache_dir() + "/kinko"
+    return env, launch_command + [restic_path, "-r", repo] + parameters + ["--json"]
+
+def init(remote, password):
+    remote.prepare_access()
+    env, restic_cmd = get_restic_base(remote, password)
+    restic_cmd = restic_cmd + ["init"]
+    print(restic_cmd)
+    result = subprocess.run(restic_cmd, env=env, capture_output=True, text=True)
     if result.returncode != 0:
+        if "already exists" in result.stderr:
+            return "exists"
         raise Exception("Failed to initialize repository, err", result.stderr)
 
-def check_repo_status(repository, access_key_id, secret_access_key, password):
-    restic_cmd = f"{launch_command} {restic_path} snapshots --json -r {repository}"
-    env = os.environ.copy()
-    env["RESTIC_CACHE_DIR"] = GLib.get_user_cache_dir() + "/kinko"
-    env["RESTIC_PASSWORD"] = password
-    env["AWS_ACCESS_KEY_ID"] = access_key_id
-    env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
-    result = subprocess.run(restic_cmd.split(), env=env, capture_output=True, text=True)
+def check_repo_status(remote, password):
+    remote.prepare_access()
+    env, restic_cmd = get_restic_base(remote, password)
+    restic_cmd = restic_cmd + ["snapshots"]
+    print(restic_cmd)
+
+    result = subprocess.run(restic_cmd, env=env, capture_output=True, text=True)
     if result.returncode == 0:
         return "ok"
     if result.returncode > 0:
@@ -38,15 +44,21 @@ def check_repo_status(repository, access_key_id, secret_access_key, password):
         else:
             print("unknown error", result.stderr)
 
-def backup(repository, access_key_id, secret_access_key, password, source, ignores, on_progress=None):
-    ignores_string = " --exclude " + " --exclude ".join(ignores)
-    restic_cmd = f'{launch_command} {restic_path}  -r {repository} backup --compression auto --exclude-caches --tag com.quexten.kinko --one-file-system --exclude-larger-than 128M ' + ignores_string + f' --json {source}'
-    env = os.environ.copy()
-    env["RESTIC_CACHE_DIR"] = GLib.get_user_cache_dir() + "/kinko"
-    env["RESTIC_PASSWORD"] = password
-    env["AWS_ACCESS_KEY_ID"] = access_key_id
-    env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
-    process = subprocess.Popen(restic_cmd.split(), stdout=subprocess.PIPE, env=env)
+def backup(remote, password, source, ignores, on_progress=None):
+    remote.prepare_access()
+    env, restic_cmd = get_restic_base(remote, password)
+    repository, parameters = remote.get_restic_parameters()
+
+    ignore_params = []
+    print(ignores)
+    if len(ignores) > 0:
+        ignore_params = ("--exclude=" + " --exclude=".join(ignores)).split(" ")
+    else:
+        ignore_params = []
+
+    restic_cmd = restic_cmd + ["backup", "--compression", "auto", "--exclude-caches", "--tag", "com.quexten.kinko", "--one-file-system", "--exclude-larger-than", "250M"] + ignore_params + parameters + ["--json", source]
+    print(restic_cmd)
+    process = subprocess.Popen(restic_cmd, stdout=subprocess.PIPE, env=env)
 
     result = None
 
@@ -60,7 +72,7 @@ def backup(repository, access_key_id, secret_access_key, password, source, ignor
                 else:
                     on_progress(status)
             else:
-                print(output.strip())
+                print("no on progress handler", output.strip())
         except json.JSONDecodeError:
             print(output.strip())
     process.wait()
@@ -72,134 +84,12 @@ def backup(repository, access_key_id, secret_access_key, password, source, ignor
 
     return result
 
-def snapshots(repository, access_key_id, secret_access_key, password):
-    restic_cmd = f"{launch_command} {restic_path} snapshots --json -r {repository}"
-    env = os.environ.copy()
-    env["RESTIC_CACHE_DIR"] = GLib.get_user_cache_dir() + "/kinko"
-    env["RESTIC_PASSWORD"] = password
-    env["AWS_ACCESS_KEY_ID"] = access_key_id
-    env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
-    result = subprocess.run(restic_cmd.split(), env=env, capture_output=True, text=True)
+def snapshots(remote, password):
+    remote.prepare_access()
+    env, restic_cmd = get_restic_base(remote, password)
+    restic_cmd = restic_cmd + ["snapshots"]
+    print(restic_cmd)
+    result = subprocess.run(restic_cmd, env=env, capture_output=True, text=True)
     if result.returncode != 0:
         raise Exception("Failed to get snapshots, err", result.stderr)
     return json.loads(result.stdout)
-
-def files_for_snapshot(repository, access_key_id, secret_access_key, password, snapshot_id):
-    restic_cmd = f"{launch_command} {restic_path} ls --json -r {repository} {snapshot_id}"
-    env = os.environ.copy()
-    env["CACHE_DIR"] = GLib.get_user_cache_dir() + "/kinko"
-    env["RESTIC_PASSWORD"] = password
-    env["AWS_ACCESS_KEY_ID"] = access_key_id
-    env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
-    result = subprocess.run(restic_cmd.split(), env=env, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise Exception("Failed to get files for snapshot, err", result.stderr)
-    
-    results = []
-    for line in result.stdout.split("\n")[1:]:
-        try:
-            res = json.loads(line)
-            results.append(res)
-        except:
-            pass
-    return results    
-
-def stats(repository, access_key_id, secret_access_key, password):
-    restic_cmd = launch_command + f"restic stats --json -r {repository}"
-    env = os.environ.copy()
-    env["CACHE_DIR"] = GLib.get_user_cache_dir() + "/kinko"
-    env["RESTIC_PASSWORD"] = password
-    env["AWS_ACCESS_KEY_ID"] = access_key_id
-    env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
-    result = subprocess.run(restic_cmd.split(), env=env, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise Exception("Failed to get stats, err", result.stderr)
-    return json.loads(result.stdout)
-
-def forget(repository, access_key_id, secret_access_key, password, keep_hourly, keep_daily, keep_weekly, keep_monthly, keep_yearly):
-    restic_cmd = f"{launch_command} {restic_path} forget -r {repository} --tag com.quexten.kinko --keep-hourly {keep_hourly} --keep-daily {keep_daily} --keep-weekly {keep_weekly} --keep-monthly {keep_monthly} --keep-yearly {keep_yearly}"
-    env = os.environ.copy()
-    env["RESTIC_PASSWORD"] = password 
-    env["AWS_ACCESS_KEY_ID"] = access_key_id
-    env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
-    result = subprocess.Popen(restic_cmd.split(), stdout=subprocess.PIPE, env=env)
-
-    for line in iter(result.stdout.readline, b""):
-        output = line.decode("utf-8")
-        print(output.strip())
-    
-    result.wait()
-    time.sleep(2)
-    return result
-
-def restore(repository, access_key_id, secret_access_key, password, snapshot_id, mountpoint, includes, exclude, destination, on_progress=None):
-    files_string = "--include " + " --include ".join(includes)
-    if len(includes) == 0:
-        files_string = ""
-    restic_cmd = f"{launch_command} {restic_path} restore --tag com.quexten.kinko -r {repository} {files_string} {snapshot_id}:{mountpoint} --json --target {destination}"
-    env = os.environ.copy()
-    env["CACHE_DIR"] = GLib.get_user_cache_dir() + "/kinko"
-    env["RESTIC_PASSWORD"] = password
-    env["AWS_ACCESS_KEY_ID"] = access_key_id
-    env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
-    process = subprocess.Popen(restic_cmd.split(), stdout=subprocess.PIPE, env=env)
-
-    result = None
-
-    for line in iter(process.stdout.readline, b""):
-        output = line.decode("utf-8")
-        try:
-            status = json.loads(output)
-            if on_progress is not None:
-                if status.get("message_type") == "summary":
-                    result = status
-                else:
-                    on_progress(status)
-            else:
-                print(output.strip())
-        except json.JSONDecodeError:
-            print(output.strip())
-    process.wait()
-    
-    # if error raise exception
-    if process.returncode != 0:
-        print(process.returncode)
-        raise Exception("Failed to restore errcode" + str(process.returncode) + "+ err" + process.stderr)
-
-    return result
-
-def prune(repository, access_key_id, secret_access_key, password):
-    restic_cmd = f"{launch_command} {restic_path} prune -r {repository} --tag com.quexten.kinko"
-    env = os.environ.copy()
-    env["CACHE_DIR"] = GLib.get_user_cache_dir() + "/kinko"
-    env["RESTIC_PASSWORD"] = password
-    env["AWS_ACCESS_KEY_ID"] = access_key_id
-    env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
-    result = subprocess.run(restic_cmd.split(), env=env, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise Exception("Failed to prune repository, err", result.stderr)
-    return result.stdout
-
-def unlock(repository, access_key_id, secret_access_key, password):
-    restic_cmd = f"{launch_command} {restic_path} unlock -r {repository}"
-    env = os.environ.copy()
-    env["CACHE_DIR"] = GLib.get_user_cache_dir() + "/kinko"
-    env["RESTIC_PASSWORD"] = password
-    env["AWS_ACCESS_KEY_ID"] = access_key_id
-    env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
-    result = subprocess.run(restic_cmd.split(), env=env, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise Exception("Failed to unlock repository, err", result.stderr)
-    return result.stdout
-
-def check(repository, access_key_id, secret_access_key, password):
-    restic_cmd = f"{launch_command} {restic_path} check --json -r {repository}"
-    env = os.environ.copy()
-    env["CACHE_DIR"] = GLib.get_user_cache_dir() + "/kinko"
-    env["RESTIC_PASSWORD"] = password
-    env["AWS_ACCESS_KEY_ID"] = access_key_id
-    env["AWS_SECRET_ACCESS_KEY"] = secret_access_key
-    result = subprocess.run(restic_cmd.split(), env=env, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise Exception("Failed to check repository, err", result.stderr)
-    return result.stdout

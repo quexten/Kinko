@@ -2,9 +2,9 @@ import os
 import socket
 import pickle
 import time
+import backend.config as config
 
 is_flatpak = os.path.exists("/.flatpak-info")
-print("is flatpak: " + str(is_flatpak))
 socket_path = "/tmp/kinko.sock"
 if is_flatpak:
     socket_path = os.path.expanduser("~") + "/.kinko.sock"
@@ -17,8 +17,8 @@ class ProxyBackupStore():
         return send_command("store.get_backup_configs", None)
     def get_backup_config(self, id):
         return send_command("store.get_backup_config", id)
-    def add_backup_config(self, backup_config):
-        return send_command("store.add_backup_config", backup_config)
+    def upsert_backup_config(self, backup_config):
+        return send_command("store.upsert_backup_config", backup_config)
     def remove_backup_config(self, id):
         return send_command("store.remove_backup_config", id)
 
@@ -43,7 +43,16 @@ class ProxyBackupExecutor():
 
     def get_next_backup_time(self, backup_config_id):
         return send_command("executor.get_next_backup_time", backup_config_id)
+    
+class ProxySystemStatus():
+    def __init__(self):
+        pass
 
+    def get_network_status(self):
+        return send_command("system_status.get_network_status", None)
+    
+    def get_power_saver_status(self):
+        return send_command("system_status.get_power_saver_status", None)
 
 def send_command(action, data):
     conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -72,8 +81,9 @@ def handle_command(action, data, backup_store, backup_executor):
         response = backup_store.get_backup_configs()
     elif action == "store.get_backup_config":
         response = backup_store.get_backup_config(data)
-    elif action == "store.add_backup_config":
-        backup_store.add_backup_config(data)
+    elif action == "store.upsert_backup_config":
+        backup_store.upsert_backup_config(data)
+        config.save_all_configs(backup_store)
         response = None
     elif action == "store.remove_backup_config":
         backup_store.remove_backup_config(data)
@@ -94,6 +104,10 @@ def handle_command(action, data, backup_store, backup_executor):
         response = None
     elif action == "executor.get_next_backup_time":
         response = backup_executor.get_next_backup_time(data)
+    elif action == "system_status.get_network_status":
+        response = backup_executor.system_status.get_network_status()
+    elif action == "system_status.get_power_saver_status":
+        response = backup_executor.system_status.get_power_saver_status()
     return response
 
 def daemonize(backup_store, backup_executor):

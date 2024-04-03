@@ -1,0 +1,24 @@
+using Gtk 4.0;
+using Adw 1;
+
+ListBox listbox {
+  selection-mode: none;
+  hexpand: true;
+
+  styles [
+    "boxed-list",
+  ]
+
+  Adw.ActionRow title_row {
+    title: 'Home Backup';
+    subtitle: 'S3 Backend';
+    sensitive: true;
+    activatable: true;
+  }
+  
+  Adw.ActionRow status_row {
+    title: 'Idle';
+    subtitle: 'Next Backup in 3 days';
+  }
+  
+}

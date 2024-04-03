@@ -1,66 +1,35 @@
 import json 
+from enum import Enum
+
+class BackupStatusCodes(Enum):
+    Idle = 0
+    Running = 1
 
 class BackupStatus():
     def __init__(self):
         self.last_backup = None
         self.last_refreshed = None
-        self.status = "Idle"
-        self.status_message = "Idle"
+        self.status_code = BackupStatusCodes.Idle
         self.progress = 0
-        self.files = 0
-        self.max_files = 0
-        self.bytes_processed = 0
-        self.bytes_total = 0
-        self.seconds_elapsed = 0
-        self.seconds_remaining = 0
         self.message = ""
         self.backups = []
 
-class BackupSchedule():
-    def __init__(self):
-        self.allow_on_metered = True
-        self.allow_on_battery = True
-        self.allow_on_powersaver = True
-        self.backup_schedule_enabled = True
-        self.backup_frequency = "hourly"
-        self.cleanup_schedule_enabled = True
-        self.cleanup_frequency = "daily"
-        self.cleanup_keep_hourly = 12
-        self.cleanup_keep_daily = 7
-        self.cleanup_keep_weekly = 4
-        self.cleanup_keep_monthly = 6
-        self.cleanup_keep_yearly = 5
-
 class BackupSettings():
-    def __init__(self, id, name, s3_secret_key, s3_access_key, s3_repository, repository_password, sources):
+    def __init__(self, id, name,  repository_password, remote):
         self.id = id
         self.name = name
-        self.s3_secret_key = s3_secret_key
-        self.s3_access_key = s3_access_key
-        self.s3_repository = s3_repository
         self.repository_password = repository_password
-        self.sources = sources
-        self.ignores_cache = True
-        self.ignore_trash = True
-        self.ignore_downloads = True
-        self.ignore_videos = True
-        self.ignore_vms = True
-    
-    def get_restic_repo(self):
-        return "s3:" + self.s3_repository
+        self.remote = remote
 
 class BackupConfig():
-    def __init__(self, settings, status, schedule):
+    def __init__(self, settings, status):
         self.settings = settings
         self.status = status 
-        self.schedule = schedule
     
 class BackupStore():
     backup_configs = []
-    update_listeners = []
 
-    def add_backup_config(self, backup_config):
-        # replace if same id
+    def upsert_backup_config(self, backup_config):
         for i, b in enumerate(self.backup_configs):
             if b.settings.id == backup_config.settings.id:
                 status = self.backup_configs[i].status
@@ -84,10 +53,3 @@ class BackupStore():
                 self.backup_configs.remove(backup_config)
                 return True
         return False
-    
-    def on_update(self, callback):
-        self.update_listeners.append(callback)
-
-    def notify_update(self):
-        for callback in self.update_listeners:
-            callback()
