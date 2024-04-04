@@ -14,7 +14,6 @@ def register_autostart(autostart):
 
 def set_status(status):
     if is_flatpak:
-        print("setting status to", status)
         try:
             subprocess.Popen(["python3", "/app/bin/flatpak/status.py", status], start_new_session=True)
         except:

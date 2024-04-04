@@ -163,12 +163,13 @@ class BackupExecutor():
         try:
             homedir = os.path.expanduser('~')
             restic.backup(backup_config.settings.remote, backup_config.settings.repository_password, homedir, ignores, on_progress=on_progress)
-            backup_config.status.status_code = BackupStatusCodes.Idle
-            backup_config.status.message = "Idle"
+
         except Exception as e:
             print("error running backup", e)
             return False
 
         print("Backup complete")
         self.refresh_backups()
+        backup_config.status.status_code = BackupStatusCodes.Idle
+        backup_config.status.message = "Idle"
         return True

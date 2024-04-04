@@ -8,6 +8,7 @@ import sys
 def receive_autostart(self, *args):
     print("autostart enabled..!?")
     print(args)
+    sys.exit(0)
 
 def request_autostart():
     bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)

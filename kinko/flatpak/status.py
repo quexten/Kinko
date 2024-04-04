@@ -26,11 +26,7 @@ def set_status(message):
 
     try:
         request = proxy.SetStatus('(a{sv})', options)
-        if request is None:
-            raise Exception(
-                "Setting background status failed"
-            )
-        print("Status set")
+        sys.exit(0)
     except Exception as e:
         print(e)
 
