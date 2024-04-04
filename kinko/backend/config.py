@@ -54,6 +54,7 @@ def read_all_configs():
 def json_to_config(json_cfg):
     config_dict = json.loads(json_cfg)
     remote = remotes.ResticRcloneRemote(config_dict["settings"]["remote"]["rclone_config"], config_dict["settings"]["remote"]["path"])
+    remote.start()
     backup_settings = backup_store.BackupSettings(
         config_dict["settings"]["id"],
         config_dict["settings"]["name"],

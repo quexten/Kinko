@@ -5,6 +5,7 @@ import ipc
 import ui.components
 from ui.backup_list_entry import BackupListEntry
 from event_monitors.system_status import NetworkStatus, PowerSaverStatus
+from ui.template_loader import load_template
 
 class MainView():
     def __init__(self, b, be, system_status, navigate_callback):
@@ -16,7 +17,6 @@ class MainView():
     def tick(self):
         network_status = self.system_status.get_network_status()
         powersaver_status = self.system_status.get_power_saver_status()
-        print(network_status, powersaver_status)
         if network_status == NetworkStatus.DISCONNECTED:
             self.paused_banner.set_revealed(True)
             self.paused_banner.set_title("Backups are paused due to no network connection")
@@ -33,8 +33,7 @@ class MainView():
         return True
 
     def load(self):
-        builder = Gtk.Builder()
-        builder.add_from_file(".templates/main_view.ui")
+        builder = load_template("main_view.ui")
         self.main_view = builder.get_object("view")
         self.content = builder.get_object("content")
         self.add_button = builder.get_object("add_button")

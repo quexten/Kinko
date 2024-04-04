@@ -1,6 +1,6 @@
 id: com.quexten.Kinko
 runtime: org.gnome.Platform
-runtime-version: '45'
+runtime-version: 'master'
 sdk: org.gnome.Sdk
 command: kinko_daemon.py
 finish-args:
@@ -21,6 +21,14 @@ finish-args:
   - --filesystem=/sys/class/power_supply:ro
 modules:
   - ./kinko/requirements.json
+  - name: blueprint-compiler
+    buildsystem: meson
+    cleanup:
+      - "*"
+    sources:
+      - type: git
+        url: "https://gitlab.gnome.org/jwestman/blueprint-compiler"
+        tag: "v0.12.0"
   - name: restic
     buildsystem: simple
     build-commands:
@@ -30,20 +38,32 @@ modules:
       - type: file
         url: https://github.com/restic/restic/releases/download/v0.16.2/restic_0.16.2_linux_amd64.bz2
         sha256: dae5e6e39107a66dc5c8ea59f6f27b16c54bd6be31f57e3281f6d87de30e05b0
+  - name: rclone
+    buildsystem: simple
+    build-commands:
+      - unzip rclone-v1.66.0-linux-amd64.zip
+      - install -D rclone-v1.66.0-linux-amd64/rclone /app/bin/rclone
+    sources:
+      - type: file
+        url: https://github.com/rclone/rclone/releases/download/v1.66.0/rclone-v1.66.0-linux-amd64.zip
+        sha256: b4d304b1dc76001b1d3bb820ae8d1ae60a072afbd3296be904a3ee00b3d4fab9
   - name: kinko
     buildsystem: simple
     build-commands:
       - install -D kinko_ui.py /app/bin/kinko_ui.py
       - install -D kinko_daemon.py /app/bin/kinko_daemon.py
-      - install -D autostart.py /app/bin/autostart.py
       - install -D ipc.py /app/bin/ipc.py
       - install -D com.quexten.Kinko.desktop /app/share/applications/com.quexten.Kinko.desktop
       - install -D kinko.svg /app/share/icons/hicolor/scalable/apps/com.quexten.Kinko.svg
-      - install -D components.py /app/bin/components.py
       - install -D style.css /app/bin/style.css
-      - cp -R gui/ /app/bin/gui/
+      - cp -R ui/ /app/bin/ui/
       - cp -R backend/ /app/bin/backend/
       - cp -R event_monitors/ /app/bin/event_monitors/
+      - cp -R flatpak/ /app/bin/flatpak/
     sources:
       - type: dir
         path: kinko
+  - name: compile-blueprints
+    buildsystem: simple
+    build-commands:
+      - blueprint-compiler batch-compile /app/bin/.templates /app/bin/ui/ /app/bin/ui/*.blp

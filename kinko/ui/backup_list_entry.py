@@ -4,7 +4,7 @@ import timeago
 import ipc
 import ui.components
 from backend.backup_store import BackupStatusCodes
-
+from ui.template_loader import load_template
 class BackupListEntry(Gtk.Box):
     def __init__(self, backup_store, backup_executor, id, navigate_callback):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)
@@ -20,8 +20,8 @@ class BackupListEntry(Gtk.Box):
         return True
 
     def load(self):
-        builder = Gtk.Builder()
-        builder.add_from_file(".templates/backup_list_entry.ui")
+        builder = load_template("backup_list_entry.ui")
+
         self.entry = builder.get_object("listbox")
         self.title_row = builder.get_object("title_row")
         self.title_row.connect("activated", lambda _: self.navigate_callback("edit", self.id))
@@ -33,14 +33,10 @@ class BackupListEntry(Gtk.Box):
 
     def render(self):
         config = self.backup_store.get_backup_config(self.id)
-        print("rendering row entry", config.status.message)
         # check if removed
-
-        print(config.status.status_code, BackupStatusCodes.Running)
         if config.status.status_code == BackupStatusCodes.Idle:
             self.status_row.set_title("Idle")
             next_backup_time = self.backup_executor.get_next_backup_time(self.id)
-            print("next", next_backup_time)
             if next_backup_time == "now":
                 self.status_row.set_subtitle("Next backup now")
             elif next_backup_time == "metered":
@@ -50,7 +46,6 @@ class BackupListEntry(Gtk.Box):
             else:
                 self.status_row.set_subtitle("Next backup in " + next_backup_time)
         elif config.status.status_code == BackupStatusCodes.Running:
-            print("set running")
             self.status_row.set_title("Running")
             self.status_row.set_subtitle("Backing up...")
         name = self.backup_store.get_backup_config(self.id).settings.name

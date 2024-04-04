@@ -6,8 +6,9 @@ import time
 import backend.remotes as remotes
 from shutil import which
 
-launch_command = ["ionice", "-c2", "nice", "-n19"]
+launch_command = []
 restic_path = which("restic")
+command_prefix = ["ionice", "-c", "3", "nice", "-n", "19"]
 
 def get_restic_base(remote, password):
     repo, parameters = remote.get_restic_parameters()
@@ -21,7 +22,7 @@ def init(remote, password):
     env, restic_cmd = get_restic_base(remote, password)
     restic_cmd = restic_cmd + ["init"]
     print(restic_cmd)
-    result = subprocess.run(restic_cmd, env=env, capture_output=True, text=True)
+    result = subprocess.run(restic_cmd, env=env, capture_output=True, text=True, shell=True)
     if result.returncode != 0:
         if "already exists" in result.stderr:
             return "exists"
@@ -33,7 +34,7 @@ def check_repo_status(remote, password):
     restic_cmd = restic_cmd + ["snapshots"]
     print(restic_cmd)
 
-    result = subprocess.run(restic_cmd, env=env, capture_output=True, text=True)
+    result = subprocess.run(restic_cmd, env=env, capture_output=True, text=True, shell=True)
     if result.returncode == 0:
         return "ok"
     if result.returncode > 0:
@@ -43,23 +44,27 @@ def check_repo_status(remote, password):
             return "norepo"
         else:
             print("unknown error", result.stderr)
+            print(result.stdout)
 
 def backup(remote, password, source, ignores, on_progress=None):
     remote.prepare_access()
-    env, restic_cmd = get_restic_base(remote, password)
-    repository, parameters = remote.get_restic_parameters()
 
     ignore_params = []
-    print(ignores)
+    ignores = ["\"{}\"".format(x) for x in ignores]
     if len(ignores) > 0:
         ignore_params = ("--exclude=" + " --exclude=".join(ignores)).split(" ")
     else:
         ignore_params = []
 
-    restic_cmd = restic_cmd + ["backup", "--compression", "auto", "--exclude-caches", "--tag", "com.quexten.kinko", "--one-file-system", "--exclude-larger-than", "250M"] + ignore_params + parameters + ["--json", source]
-    print(restic_cmd)
-    process = subprocess.Popen(restic_cmd, stdout=subprocess.PIPE, env=env)
-
+    repo, parameters = remote.get_restic_parameters()
+    restic_cmd = launch_command + [restic_path, "-r", repo] + parameters + ["--json"]
+    env = os.environ.copy()
+    env["RESTIC_PASSWORD"] = password
+    env["RESTIC_CACHE_DIR"] = GLib.get_user_cache_dir() + "/kinko"
+    
+    restic_cmd = command_prefix + restic_cmd + ["backup", "--compression", "auto", "--exclude-caches", "--tag", "com.quexten.kinko", "--one-file-system", "--exclude-larger-than", "250M"] + ignore_params + [source]
+    cmdstring = " ".join(restic_cmd)
+    process = subprocess.Popen(cmdstring, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, shell=True)
     result = None
 
     for line in iter(process.stdout.readline, b""):
@@ -76,6 +81,11 @@ def backup(remote, password, source, ignores, on_progress=None):
         except json.JSONDecodeError:
             print(output.strip())
     process.wait()
+
+    for line in iter(process.stderr.readline, b""):
+        print(line.decode("utf-8").strip())
+    for line in iter(process.stdout.readline, b""):
+        print(line.decode("utf-8").strip())
     
     # if error raise exception
     if process.returncode != 0:
@@ -88,8 +98,8 @@ def snapshots(remote, password):
     remote.prepare_access()
     env, restic_cmd = get_restic_base(remote, password)
     restic_cmd = restic_cmd + ["snapshots"]
-    print(restic_cmd)
     result = subprocess.run(restic_cmd, env=env, capture_output=True, text=True)
     if result.returncode != 0:
         raise Exception("Failed to get snapshots, err", result.stderr)
-    return json.loads(result.stdout)
+    res = result.stdout
+    return json.loads(res)

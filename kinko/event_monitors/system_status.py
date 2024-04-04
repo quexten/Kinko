@@ -14,7 +14,7 @@ class NetworkStatus(Enum):
 
 class SystemStatus():
     def __init__(self):
-        self.network_status = NetworkStatus.DISCONNECTED
+        self.network_status = NetworkStatus.UNMETERED
         self.power_saver_status = PowerSaverStatus.Disabled
 
         self.last_network_status = None
@@ -76,7 +76,7 @@ class SystemStatus():
             self.power_saver_status = PowerSaverStatus.Enabled if power_save_enabled else PowerSaverStatus.Disabled
 
         self.power_profile_monitor = Gio.PowerProfileMonitor.dup_default()
-        self.power_saver_status = self.power_profile_monitor.get_power_saver_enabled()
+        self.power_saver_status = PowerSaverStatus.Enabled if self.power_profile_monitor.get_power_saver_enabled() else PowerSaverStatus.Disabled
         self.power_profile_monitor.connect(
             'notify::power-saver-enabled', power_profile_status_changed
         )

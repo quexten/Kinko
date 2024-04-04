@@ -4,6 +4,7 @@ import backend.backup_store as backup_store
 from backend import restic, rclone, remotes
 import uuid
 import time
+from ui.template_loader import load_template
 
 class EditView(Gtk.Box):
     def __init__(self, backup_store, navigate, window):
@@ -14,8 +15,7 @@ class EditView(Gtk.Box):
         self.rclone_config = ""
         
     def load(self):
-        builder = Gtk.Builder()
-        builder.add_from_file(".templates/edit_view.ui")
+        builder = load_template("edit_view.ui")
         self.edit_view = builder.get_object("view")
         self.content = builder.get_object("content")
         self.back_button = builder.get_object("back_button")
@@ -78,8 +78,7 @@ class EditView(Gtk.Box):
         task.run_in_thread(lambda *_: self._task_verify_rclone())
 
     def edit_rclone(self):
-        builder = Gtk.Builder()
-        builder.add_from_file(".templates/rclone_ui.ui")
+        builder = load_template("rclone_ui.ui")
         self.dialog = builder.get_object("dialog")
         self.config_textview = builder.get_object("config_textview")
         self.config_textview.get_buffer().set_text(self.rclone_config)

@@ -10,6 +10,7 @@ import subprocess
 import time
 import threading
 import socket
+import flatpak.api
 
 def glib_main():
     print("GLib main loop started")
@@ -35,13 +36,7 @@ def daemonize():
     print("waiting for ipc...")
     ipc.daemonize(b, be)
 
-is_flatpak = os.path.exists("/.flatpak-info")
-if is_flatpak:
-    print("Running in flatpak, registering with background portal for autostart.")
-    try:
-        subprocess.Popen(["python3", "/app/bin/autostart.py"], start_new_session=True)
-    except:
-        pass
+flatpak.api.register_autostart(True)
 
 is_thread = True
 try:
@@ -66,5 +61,5 @@ if not is_silent:
 
 if is_thread:
     print("Waiting for daemon thread...")
-    while True:
+    while True: 
         time.sleep(1)

@@ -7,6 +7,7 @@ import timeago
 from enum import Enum
 from backend.backup_store import BackupStatusCodes, BackupStatus, BackupSettings, BackupConfig
 from event_monitors.system_status import PowerSaverStatus, NetworkStatus
+import flatpak.api
 
 REFRESH_INTERVAL = 600
 
@@ -43,6 +44,16 @@ class BackupExecutor():
         time.sleep(10)
         last_refreshed = datetime.fromtimestamp(0)
         while True:
+            is_running = False
+            for backup_config in self.backup_store.get_backup_configs():
+                if backup_config.status.status_code == BackupStatusCodes.Running:
+                    is_running = True
+                    break
+            if is_running:
+                flatpak.api.set_status("Running Backup...")
+            else:
+                flatpak.api.set_status("Idle")
+
             for backup_config in self.backup_store.get_backup_configs():
                 if backup_config.status.last_refreshed == None or (datetime.now() - backup_config.status.last_refreshed).total_seconds() > REFRESH_INTERVAL:
                     print("refreshing backups")
@@ -57,7 +68,7 @@ class BackupExecutor():
                 next_backup = self.get_next_backup_time(backup_config.settings.id)
                 if next_backup == "now":
                     print("now with status", backup_config.status.status_code)
-                    backup_config.status.status_code = "Running"
+                    backup_config.status.status_code = BackupStatusCodes.Running
                     self.backup_now(backup_config.settings.id)
             time.sleep(5)
 

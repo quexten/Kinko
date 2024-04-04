@@ -2,14 +2,17 @@ import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 
-from gi.repository import Gtk, Adw, Gdk, GObject
+from gi.repository import Gtk, Adw, Gdk, GObject, Gio, GLib
 import sys
 import ipc
 import os
 import time
 
+from random import randint
 from ui.main_view import MainView
 from ui.edit_view import EditView
+
+from ui.template_loader import load_template
 
 class KinkoApp(Adw.Application):
     def __init__(self, **kwargs):
@@ -21,8 +24,7 @@ class KinkoApp(Adw.Application):
         be = ipc.ProxyBackupExecutor()
         system_status = ipc.ProxySystemStatus()
 
-        builder = Gtk.Builder()
-        builder.add_from_file(".templates/kinko.ui")
+        builder = load_template("kinko.ui")
         self.win = builder.get_object("window")
         self.stack = builder.get_object("main_stack")
         self.main_content = builder.get_object("main_content")
