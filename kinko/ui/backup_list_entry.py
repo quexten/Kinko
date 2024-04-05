@@ -26,6 +26,7 @@ class BackupListEntry(Gtk.Box):
         self.title_row = builder.get_object("title_row")
         self.title_row.connect("activated", lambda _: self.navigate_callback("edit", self.id))
         self.status_row = builder.get_object("status_row")
+        self.status_row.connect("activated", lambda _: self.navigate_callback("backup", self.id))
 
         self.render()
         GObject.timeout_add(1000, lambda: self.tick())

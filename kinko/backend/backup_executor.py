@@ -9,7 +9,8 @@ from backend.backup_store import BackupStatusCodes, BackupStatus, BackupSettings
 from event_monitors.system_status import PowerSaverStatus, NetworkStatus
 import flatpak.api
 
-REFRESH_INTERVAL = 600
+REFRESH_INTERVAL = 60 * 10
+BACKUP_INTERVAL = 60 * 60
 
 class BackupExecutor():
     def __init__(self, backup_store, system_status):
@@ -26,7 +27,7 @@ class BackupExecutor():
 
         time = None
         if backup_config.status.last_backup != None:
-            time = backup_config.status.last_backup + timedelta(hours=1)
+            time = backup_config.status.last_backup + timedelta(seconds=BACKUP_INTERVAL)
         else:
             time = datetime.now(timezone.utc)
 
@@ -107,13 +108,21 @@ class BackupExecutor():
             return False
 
         backup_config.status.progress = 0
-        backup_config.status.message = "Starting backup"
+        backup_config.status.message = "Starting backup\n"
+        backup_config.status.progress_files = {}
         print("Starting backup")
 
         def on_progress(status):
             if status.get("message_type") == "status":
-                backup_config.status.message = "Backing up..."
+                if "current_files" in status:
+                    for file in status.get("current_files"):
+                        if file not in backup_config.status.progress_files:
+                            backup_config.status.progress_files[file] = True
+                            backup_config.status.message += file + "\n"
+
                 backup_config.status.progress = status.get("percent_done")
+                backup_config.status.seconds_elapsed = status.get("seconds_elapsed")
+                backup_config.status.seconds_remaining = status.get("seconds_remaining")
                 print("progress", status.get("percent_done"))
                    
             if status.get("message_type") == "summary":

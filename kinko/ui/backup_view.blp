@@ -1,0 +1,72 @@
+using Gtk 4.0;
+using Adw 1;
+
+Adw.ToolbarView view {
+  content:  ScrolledWindow {
+    vexpand: true;
+    hexpand: true;
+    child: Box edit_content {
+      orientation: vertical;
+      spacing: 6;
+      margin-top: 20;
+      margin-start: 80;
+      margin-end: 80;
+
+      Label status_label {
+        label: "Running";
+        halign: start;
+        styles [
+            "title-1"
+        ]
+      }
+      
+      Label time_label {
+        label: "Estimated time remaining: 1 hour 30 minutes";
+        halign: start;
+        styles [
+            "title-4"
+        ]
+      }
+
+      Label progress_label {
+        margin-top: 30;
+        label: "Backup progress: 50%";
+        halign: start;
+      }
+
+      ProgressBar progress_bar {
+        margin-top: 10;
+        hexpand: true;
+        visible: true;
+      }
+
+      ScrolledWindow log_scrolled_window {
+        margin-top: 30;
+        hexpand: true;
+        height-request: 500;
+        TextView log_textview {
+          hexpand: true;
+        }
+      }
+    };
+  };
+
+  [top]
+  Adw.HeaderBar {
+    halign: baseline;
+
+    title-widget: Adw.WindowTitle {
+      title: 'Backup Status';
+    };
+
+    valign: start;
+
+    Button back_button {
+      label: 'Back';
+
+      styles [
+        "suggested-action",
+      ]
+    }
+  }
+}

@@ -11,6 +11,7 @@ import time
 from random import randint
 from ui.main_view import MainView
 from ui.edit_view import EditView
+from ui.backup_view import BackupView
 
 from ui.template_loader import load_template
 
@@ -24,11 +25,13 @@ class KinkoApp(Adw.Application):
         be = ipc.ProxyBackupExecutor()
         system_status = ipc.ProxySystemStatus()
 
+        print("[ui] loading templates")
         builder = load_template("kinko.ui")
         self.win = builder.get_object("window")
         self.stack = builder.get_object("main_stack")
         self.main_content = builder.get_object("main_content")
         self.edit_content = builder.get_object("edit_content")
+        self.backup_content = builder.get_object("backup_content")
 
         # builder = Gtk.Builder()
         # builder.add_from_file(".templates/edit_view.ui")
@@ -40,6 +43,9 @@ class KinkoApp(Adw.Application):
 
         self.main_view = MainView(b, be, system_status, self.navigate)
         self.main_content.append(self.main_view.load())
+
+        self.backup_view = BackupView(b, be, self.navigate, self.win)
+        self.backup_content.append(self.backup_view.load())
 
         self.win.set_application(self)
         self.win.present()
@@ -63,23 +69,12 @@ class KinkoApp(Adw.Application):
         if view == "main":
             self.stack.set_visible_child_name("main_view")
             self.main_view.navigate_to(param)
-        elif view == "schedule":
-            self.stack.set_visible_child(self.schedule_view_scrolled)
-            self.schedule_view.navigate_to(param)
+        elif view == "backup":
+            self.stack.set_visible_child_name("backup_view")
+            self.backup_view.navigate_to(param)
         elif view == "edit":
             self.stack.set_visible_child_name("edit_view")
             self.edit_view.navigate_to(param)
-        elif view == "status":
-            self.stack.set_visible_child(self.status_view_scrolled)
-            self.status_view.navigate_to(param)
-        elif view == "history":
-            self.stack.set_visible_child(self.history_view_scrolled)
-            self.history_view.navigate_to(param)
-        elif view == "status":
-            print("status")
-        elif view == "restore":
-            self.stack.set_visible_child(self.restore_view_scrolled)
-            self.restore_view.navigate_to(param)
         else:
             raise Exception("Unknown view")
 

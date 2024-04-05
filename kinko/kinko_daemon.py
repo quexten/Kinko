@@ -54,10 +54,9 @@ except:
 
 time.sleep(1)
 
-is_silent = "--silent" in sys.argv
-if not is_silent:
-    if os.path.exists("/app/bin/kinko_ui.py"):
-        subprocess.Popen(["python3", "/app/bin/kinko_ui.py"])
+if not "--hidden" in sys.argv:
+    print("Starting UI...")
+    subprocess.Popen(["python3", "/app/bin/kinko_ui.py"])
 
 if is_thread:
     print("Waiting for daemon thread...")
